@@ -21,7 +21,9 @@ type Config struct {
 }
 
 type APIServer struct {
-	config Config
+	config       Config
+	restRouter   *gin.Engine
+	restHandlers map[string]RestHandler
 }
 
 func NewAPIServer() *APIServer {
@@ -33,18 +35,18 @@ func NewAPIServer() *APIServer {
 			dataPath: "./data",
 			logPath:  "./log",
 		},
+		restHandlers: make(map[string]RestHandler),
 	}
 }
 
 func (svc *APIServer) Run() int {
 	fmt.Println("Light Scheduler API Server is starting up...")
-	gin.SetMode(gin.ReleaseMode)
-	router := gin.Default()
-	svc.buildHTTPRoute(router)
+	//gin.SetMode(gin.ReleaseMode)
+	svc.registerRestHandlers(gin.Default())
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", svc.config.address, svc.config.port),
-		Handler: router,
+		Handler: svc.restRouter,
 	}
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -52,8 +54,7 @@ func (svc *APIServer) Run() int {
 		}
 	}()
 
-	// Wait for interrupt signal to gracefully shutdown the server with
-	// a timeout of 3 seconds.
+	// 等待系统中断信号并在3秒后关闭HTTP服务
 	quit := make(chan os.Signal)
 	signal.Notify(quit, os.Interrupt)
 	<-quit
@@ -68,10 +69,29 @@ func (svc *APIServer) Run() int {
 	return 0
 }
 
-func (svc *APIServer) buildHTTPRoute(router *gin.Engine) {
-	router.GET("/healthz", func(c *gin.Context) {
+func (svc *APIServer) registerRestHandlers(router *gin.Engine) {
+	svc.restRouter = router
+	// 绑定系统级API路径实现
+	svc.restRouter.GET("/healthz", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"status": "ok",
 		})
 	})
+
+	// 绑定针对各种资源的RESTful API路径
+	// 绑定/jobs相关路径处理
+	svc.registerHandler(&JobRestHandler{svc: svc})
+	// 绑定/tasks相关路径处理
+	svc.registerHandler(&TaskRestHandler{svc: svc})
+	// 绑定/queues相关路径处理
+	svc.registerHandler(&QueueRestHandler{svc: svc})
+	// 绑定/nodes相关路径处理
+	svc.registerHandler(&NodeRestHandler{svc: svc})
+	// 绑定/users相关路径处理
+	svc.registerHandler(&UserRestHandler{svc: svc})
+}
+
+func (svc *APIServer) registerHandler(handler RestHandler) {
+	svc.restHandlers[handler.restPrefix()] = handler
+	handler.registerRoute()
 }
