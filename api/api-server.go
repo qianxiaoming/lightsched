@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -56,7 +57,7 @@ func (svc *APIServer) Run() int {
 
 	// 等待系统中断信号并在3秒后关闭HTTP服务
 	quit := make(chan os.Signal)
-	signal.Notify(quit, os.Interrupt)
+	signal.Notify(quit, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 	log.Println("Shut down api server in 3 seconds...")
 
@@ -64,6 +65,10 @@ func (svc *APIServer) Run() int {
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Fatal("Server Shutdown failed:", err)
+	}
+	select {
+	case <-ctx.Done():
+		log.Println("timeout of 3 seconds.")
 	}
 	log.Println("Server exited")
 	return 0
