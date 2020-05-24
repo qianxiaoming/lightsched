@@ -1,6 +1,10 @@
 package apiserver
 
-import "github.com/gin-gonic/gin"
+import (
+	"log"
+
+	"github.com/gin-gonic/gin"
+)
 
 func (svc *APIServer) OnRestEvent() {
 
@@ -18,6 +22,16 @@ func (svc *APIServer) OnTaskEvent() {
 
 }
 
+// EventLoop 是API Server的主事件循环实现
 func (svc *APIServer) EventLoop() {
-
+	for {
+		select {
+		case <-svc.restChan:
+		case <-svc.nodeChan:
+		case <-svc.taskChan:
+		case <-svc.stopChan:
+			log.Println("Event loop of API Server stopped")
+			return
+		}
+	}
 }

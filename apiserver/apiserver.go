@@ -7,12 +7,13 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
+// Config 是API Server的配置信息
 type Config struct {
 	address  string
 	port     int
@@ -21,12 +22,18 @@ type Config struct {
 	logPath  string
 }
 
+// APIServer 是集群的中心服务，实现了资源管理、任务调度和API响应等功能
 type APIServer struct {
 	config        Config
 	restRouter    *gin.Engine
 	restEndpoints map[string]RestEndpoint
+	restChan      chan interface{}
+	nodeChan      chan interface{}
+	taskChan      chan interface{}
+	stopChan      chan struct{}
 }
 
+// NewAPIServer 用以创建和初始化API Server实例
 func NewAPIServer() *APIServer {
 	return &APIServer{
 		config: Config{
@@ -37,16 +44,27 @@ func NewAPIServer() *APIServer {
 			logPath:  "./log",
 		},
 		restEndpoints: make(map[string]RestEndpoint),
+		restChan:      make(chan interface{}),
+		nodeChan:      make(chan interface{}),
+		taskChan:      make(chan interface{}),
+		stopChan:      make(chan struct{}),
 	}
 }
 
+// Run 是API Server的主运行逻辑，返回时服务即结束运行
 func (svc *APIServer) Run() int {
 	fmt.Println("Light Scheduler API Server is starting up...")
 
+	var wg sync.WaitGroup
+	waitForStop := func(wait func()) {
+		wg.Add(1)
+		defer wg.Done()
+		wait()
+	}
 	// 启动API Server的主事件循环
-	go func() {
+	go waitForStop(func() {
 		svc.EventLoop()
-	}()
+	})
 
 	//gin.SetMode(gin.ReleaseMode)
 	svc.registerRestEndpoint(gin.Default())
@@ -56,27 +74,23 @@ func (svc *APIServer) Run() int {
 		Addr:    fmt.Sprintf("%s:%d", svc.config.address, svc.config.port),
 		Handler: svc.restRouter,
 	}
-	go func() {
+	go waitForStop(func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Cannot listen on %s:%d: %s\n", svc.config.address, svc.config.port, err)
 		}
-	}()
+	})
 
 	// 等待系统中断信号并在3秒后关闭HTTP服务
 	quit := make(chan os.Signal)
 	signal.Notify(quit, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	log.Println("Shut down api server in 3 seconds...")
+	log.Println("Shutting down api server...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	if err := srv.Shutdown(ctx); err != nil {
+	if err := srv.Shutdown(context.Background()); err != nil {
 		log.Fatal("Server Shutdown failed:", err)
 	}
-	select {
-	case <-ctx.Done():
-		log.Println("timeout of 3 seconds.")
-	}
+	close(svc.stopChan)
+	wg.Wait()
 	log.Println("Server exited")
 	return 0
 }
