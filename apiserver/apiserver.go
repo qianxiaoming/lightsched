@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,6 +12,7 @@ import (
 	"syscall"
 
 	"github.com/gin-gonic/gin"
+	"google.golang.org/grpc"
 )
 
 // Config 是API Server的配置信息
@@ -66,31 +68,48 @@ func (svc *APIServer) Run() int {
 		svc.EventLoop()
 	})
 
-	//gin.SetMode(gin.ReleaseMode)
-	svc.registerRestEndpoint(gin.Default())
+	// 启动对内gRPC服务
+	grpcAddr := fmt.Sprintf("%s:%d", svc.config.address, svc.config.rpcPort)
+	lis, err := net.Listen("tcp", grpcAddr)
+	if err != nil {
+		log.Fatalf("Failed to listen rpc port %d: %v", svc.config.rpcPort, err)
+	}
+	grpcsrv := grpc.NewServer()
+	//pb.RegisterGreeterServer(s, &server{})
+	go waitForStop(func() {
+		log.Printf("Start gRPC Service on %v\n", grpcAddr)
+		if err := grpcsrv.Serve(lis); err != nil {
+			log.Fatalf("Failed to start gRPC serve: %v", err)
+		}
+	})
 
 	// 启动对外的RESTful API服务
-	srv := &http.Server{
+	gin.SetMode(gin.ReleaseMode)
+	svc.registerRestEndpoint(gin.Default())
+	httpsrv := &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", svc.config.address, svc.config.port),
 		Handler: svc.restRouter,
 	}
 	go waitForStop(func() {
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Printf("Start RESTful API Service on %v\n", httpsrv.Addr)
+		if err := httpsrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Cannot listen on %s:%d: %s\n", svc.config.address, svc.config.port, err)
 		}
 	})
 
-	// 等待系统中断信号并在3秒后关闭HTTP服务
+	// 等待系统中断信号并关闭gRPC和HTTP服务
 	quit := make(chan os.Signal)
 	signal.Notify(quit, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 	log.Println("Shutting down api server...")
 
-	if err := srv.Shutdown(context.Background()); err != nil {
+	if err := httpsrv.Shutdown(context.Background()); err != nil {
 		log.Fatal("Server Shutdown failed:", err)
 	}
+	grpcsrv.GracefulStop()
 	close(svc.stopChan)
 	wg.Wait()
+
 	log.Println("Server exited")
 	return 0
 }
