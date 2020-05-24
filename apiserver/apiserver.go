@@ -1,4 +1,4 @@
-package api
+package apiserver
 
 import (
 	"context"
@@ -22,9 +22,9 @@ type Config struct {
 }
 
 type APIServer struct {
-	config       Config
-	restRouter   *gin.Engine
-	restHandlers map[string]RestHandler
+	config        Config
+	restRouter    *gin.Engine
+	restEndpoints map[string]RestEndpoint
 }
 
 func NewAPIServer() *APIServer {
@@ -36,15 +36,22 @@ func NewAPIServer() *APIServer {
 			dataPath: "./data",
 			logPath:  "./log",
 		},
-		restHandlers: make(map[string]RestHandler),
+		restEndpoints: make(map[string]RestEndpoint),
 	}
 }
 
 func (svc *APIServer) Run() int {
 	fmt.Println("Light Scheduler API Server is starting up...")
-	//gin.SetMode(gin.ReleaseMode)
-	svc.registerRestHandlers(gin.Default())
 
+	// 启动API Server的主事件循环
+	go func() {
+		svc.EventLoop()
+	}()
+
+	//gin.SetMode(gin.ReleaseMode)
+	svc.registerRestEndpoint(gin.Default())
+
+	// 启动对外的RESTful API服务
 	srv := &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", svc.config.address, svc.config.port),
 		Handler: svc.restRouter,
@@ -74,7 +81,7 @@ func (svc *APIServer) Run() int {
 	return 0
 }
 
-func (svc *APIServer) registerRestHandlers(router *gin.Engine) {
+func (svc *APIServer) registerRestEndpoint(router *gin.Engine) {
 	svc.restRouter = router
 	// 绑定系统级API路径实现
 	svc.restRouter.GET("/healthz", func(c *gin.Context) {
@@ -84,19 +91,18 @@ func (svc *APIServer) registerRestHandlers(router *gin.Engine) {
 	})
 
 	// 绑定针对各种资源的RESTful API路径
+	registerEndpoint := func(endpoint RestEndpoint) {
+		svc.restEndpoints[endpoint.restPrefix()] = endpoint
+		endpoint.registerRoute()
+	}
 	// 绑定/jobs相关路径处理
-	svc.registerHandler(&JobRestHandler{svc: svc})
+	registerEndpoint(&JobEndpoint{handler: svc})
 	// 绑定/tasks相关路径处理
-	svc.registerHandler(&TaskRestHandler{svc: svc})
+	registerEndpoint(&TaskEndpoint{handler: svc})
 	// 绑定/queues相关路径处理
-	svc.registerHandler(&QueueRestHandler{svc: svc})
+	registerEndpoint(&QueueEndpoint{handler: svc})
 	// 绑定/nodes相关路径处理
-	svc.registerHandler(&NodeRestHandler{svc: svc})
+	registerEndpoint(&NodeEndpoint{handler: svc})
 	// 绑定/users相关路径处理
-	svc.registerHandler(&UserRestHandler{svc: svc})
-}
-
-func (svc *APIServer) registerHandler(handler RestHandler) {
-	svc.restHandlers[handler.restPrefix()] = handler
-	handler.registerRoute()
+	registerEndpoint(&UserEndpoint{handler: svc})
 }
