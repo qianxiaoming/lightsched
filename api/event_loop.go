@@ -7,7 +7,7 @@ import (
 )
 
 func (svc *APIServer) OnRestEvent() {
-
+	svc.restChan <- struct{}{}
 }
 
 func (svc *APIServer) RestRouter() *gin.Engine {
@@ -27,6 +27,7 @@ func (svc *APIServer) EventLoop() {
 	for {
 		select {
 		case <-svc.restChan:
+			log.Println("RESTful Event received")
 		case <-svc.nodeChan:
 		case <-svc.taskChan:
 		case <-svc.stopChan:

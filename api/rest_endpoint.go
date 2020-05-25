@@ -13,6 +13,7 @@ type JobEndpoint struct {
 
 func (job *JobEndpoint) registerRoute() {
 	job.handler.RestRouter().GET(job.restPrefix(), func(c *gin.Context) {
+		job.handler.OnRestEvent()
 		c.JSON(200, gin.H{
 			"jobs": [...]string{"001", "002", "003"},
 		})
