@@ -1,5 +1,4 @@
-package type
+package common
 
 type JobQueue struct {
-
 }
