@@ -28,7 +28,7 @@ const (
 type Job struct {
 	ID          string
 	Name        string
-	QueueName   string
+	Queue       *JobQueue
 	Labels      map[string]string
 	Priority    int
 	Schedulable bool
