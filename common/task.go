@@ -42,11 +42,21 @@ type Task struct {
 
 // TaskGroup 表示一组执行命令相同的任务，但每个任务的参数可以不同
 type TaskGroup struct {
-	Envs       []string
 	Command    string
 	WorkDir    string
+	Envs       map[string]string
 	Labels     map[string]string
 	Tasks      []*Task
 	Dependents []*TaskGroup
 	Resources  ResourceSet
+}
+
+// TaskGroupSpec 表示提交的任务组的基本信息，其中包含多个任务描述。
+type TaskGroupSpec struct {
+	Count     int
+	Command   string
+	WorkDir   string
+	Envs      map[string]string
+	Labels    map[string]string
+	Resources ResourceSetSpec
 }

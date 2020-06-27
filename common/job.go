@@ -41,3 +41,13 @@ type Job struct {
 	State      JobState
 	Progress   int
 }
+
+// JobSpec 表示提交的作业的基本信息，包含多个任务组的描述。
+type JobSpec struct {
+	ID       string
+	Name     string
+	Queue    string
+	Priority int
+	Labels   map[string]string
+	Groups   []TaskGroupSpec
+}

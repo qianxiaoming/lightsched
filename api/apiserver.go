@@ -84,7 +84,7 @@ func (svc *APIServer) Run() int {
 	})
 
 	// 启动对外的RESTful API服务
-	gin.SetMode(gin.ReleaseMode)
+	// gin.SetMode(gin.ReleaseMode)
 	svc.registerRestEndpoint(gin.Default())
 	httpsrv := &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", svc.config.address, svc.config.port),
