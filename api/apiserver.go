@@ -63,10 +63,6 @@ func (svc *APIServer) Run() int {
 		defer wg.Done()
 		wait()
 	}
-	// 启动API Server的主事件循环
-	go waitForStop(func() {
-		svc.EventLoop()
-	})
 
 	// 启动对内gRPC服务
 	grpcAddr := fmt.Sprintf("%s:%d", svc.config.address, svc.config.rpcPort)

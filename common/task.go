@@ -8,7 +8,9 @@ type TaskState int32
 const (
 	// TaskQueued 任务等待调度
 	TaskQueued TaskState = iota
-	// TaskDispatching 任务已调度，正在分发到节点
+	// TaskScheduled 任务已经分配到某个节点
+	TaskScheduled
+	// TaskDispatching 任务正在被分发到调度的节点
 	TaskDispatching
 	// TaskExecuting 任务正在执行
 	TaskExecuting

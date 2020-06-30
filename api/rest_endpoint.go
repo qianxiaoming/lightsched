@@ -27,17 +27,17 @@ func responseError(code int, format string, err error, c *gin.Context) {
 
 // JobEndpoint 是Job资源对象的RESTful API实现接口
 type JobEndpoint struct {
-	handler RestEventHandler
+	handler *APIServer
 }
 
 func (job *JobEndpoint) registerRoute() {
-	job.handler.RestRouter().GET(job.restPrefix(), func(c *gin.Context) {
+	job.handler.restRouter.GET(job.restPrefix(), func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"jobs": [...]string{"001", "002", "003"},
 		})
 	})
-	job.handler.RestRouter().POST(job.restPrefix(), job.createJob)
-	job.handler.RestRouter().DELETE(job.restPrefix()+"/:id", job.deleteJob)
+	job.handler.restRouter.POST(job.restPrefix(), job.createJob)
+	job.handler.restRouter.DELETE(job.restPrefix()+"/:id", job.deleteJob)
 }
 
 func (job *JobEndpoint) restPrefix() string {
@@ -48,7 +48,7 @@ func (job *JobEndpoint) createJob(c *gin.Context) {
 	var spec common.JobSpec
 	if err := c.BindJSON(&spec); err == nil {
 		log.Printf("Request to create job \"%s\"(%s) in queue \"%s\" with %d task group(s)...\n", spec.Name, spec.ID, spec.Queue, len(spec.Groups))
-		err = job.handler.OnCreateJobEvent(&spec)
+		err = job.handler.requestCreateJob(&spec)
 		if err == nil {
 			c.JSON(http.StatusCreated, gin.H{"id": spec.ID})
 		} else {
@@ -66,11 +66,11 @@ func (job *JobEndpoint) deleteJob(c *gin.Context) {
 
 // TaskEndpoint 是Task资源对象的RESTful API实现接口
 type TaskEndpoint struct {
-	handler RestEventHandler
+	handler *APIServer
 }
 
 func (task *TaskEndpoint) registerRoute() {
-	task.handler.RestRouter().GET(task.restPrefix(), func(c *gin.Context) {
+	task.handler.restRouter.GET(task.restPrefix(), func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"tasks": [...]string{"t001", "t002", "t003"},
 		})
@@ -83,11 +83,11 @@ func (task *TaskEndpoint) restPrefix() string {
 
 // QueueEndpoint 是Queue资源对象的RESTful API实现接口
 type QueueEndpoint struct {
-	handler RestEventHandler
+	handler *APIServer
 }
 
 func (queue *QueueEndpoint) registerRoute() {
-	queue.handler.RestRouter().GET(queue.restPrefix(), func(c *gin.Context) {
+	queue.handler.restRouter.GET(queue.restPrefix(), func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"tasks": [...]string{"t001", "t002", "t003"},
 		})
@@ -100,11 +100,11 @@ func (queue *QueueEndpoint) restPrefix() string {
 
 // NodeEndpoint 是Node资源对象的RESTful API实现接口
 type NodeEndpoint struct {
-	handler RestEventHandler
+	handler *APIServer
 }
 
 func (node *NodeEndpoint) registerRoute() {
-	node.handler.RestRouter().GET(node.restPrefix(), func(c *gin.Context) {
+	node.handler.restRouter.GET(node.restPrefix(), func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"tasks": [...]string{"t001", "t002", "t003"},
 		})
@@ -117,11 +117,11 @@ func (node *NodeEndpoint) restPrefix() string {
 
 // UserEndpoint 是User资源对象的RESTful API实现接口
 type UserEndpoint struct {
-	handler RestEventHandler
+	handler *APIServer
 }
 
 func (user *UserEndpoint) registerRoute() {
-	user.handler.RestRouter().GET(user.restPrefix(), func(c *gin.Context) {
+	user.handler.restRouter.GET(user.restPrefix(), func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"tasks": [...]string{"t001", "t002", "t003"},
 		})
