@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/qianxiaoming/lightsched/common"
 )
 
 // Config 是API Server的配置信息
@@ -35,11 +34,11 @@ type APIServer struct {
 	sync.RWMutex
 
 	config        Config
+	state         *StateModel
 	restRouter    *gin.Engine
 	nodeRouter    *gin.Engine
 	restEndpoints map[string]HTTPEndpoint
 	nodeEndpoints map[string]HTTPEndpoint
-	jobQueues     map[string]*common.JobQueue
 }
 
 // NewAPIServer 用以创建和初始化API Server实例
@@ -52,9 +51,9 @@ func NewAPIServer() *APIServer {
 			dataPath: "./data",
 			logPath:  "./log",
 		},
+		state:         NewStateModel(),
 		restEndpoints: make(map[string]HTTPEndpoint),
 		nodeEndpoints: make(map[string]HTTPEndpoint),
-		jobQueues:     make(map[string]*common.JobQueue),
 	}
 }
 
@@ -168,12 +167,4 @@ func (svc *APIServer) registerNodeEndpoint(router *gin.Engine) {
 	}
 	// 绑定/heartbeat相关路径处理
 	registerEndpoint(&HeartbeatEndpoint{server: svc})
-}
-
-func (svc *APIServer) getJobQueue(name string) *common.JobQueue {
-	queue, ok := svc.jobQueues[name]
-	if ok {
-		return queue
-	}
-	return nil
 }

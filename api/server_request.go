@@ -10,7 +10,7 @@ func (svc *APIServer) requestCreateJob(spec *common.JobSpec) error {
 	svc.Lock()
 	defer svc.Unlock()
 
-	queue := svc.getJobQueue(spec.Queue)
+	queue := svc.state.getJobQueue(spec.Queue)
 	if queue == nil {
 		return fmt.Errorf("Invalid queue name \"%s\"", spec.Queue)
 	}
