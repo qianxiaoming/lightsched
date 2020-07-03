@@ -9,12 +9,6 @@ import (
 	"github.com/qianxiaoming/lightsched/common"
 )
 
-// RestEndpoint 是对不同资源对象提供RESTful API实现的接口
-type RestEndpoint interface {
-	registerRoute()
-	restPrefix() string
-}
-
 func responseError(code int, format string, err error, c *gin.Context) {
 	str := fmt.Sprintf(format, err)
 	log.Printf(str)
@@ -113,21 +107,4 @@ func (node *NodeEndpoint) registerRoute() {
 
 func (node *NodeEndpoint) restPrefix() string {
 	return "/nodes"
-}
-
-// UserEndpoint 是User资源对象的RESTful API实现接口
-type UserEndpoint struct {
-	handler *APIServer
-}
-
-func (user *UserEndpoint) registerRoute() {
-	user.handler.restRouter.GET(user.restPrefix(), func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"tasks": [...]string{"t001", "t002", "t003"},
-		})
-	})
-}
-
-func (user *UserEndpoint) restPrefix() string {
-	return "/users"
 }
