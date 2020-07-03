@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/qianxiaoming/lightsched/common"
 )
 
 // Config 是API Server的配置信息
@@ -31,12 +32,14 @@ type HTTPEndpoint interface {
 
 // APIServer 是集群的中心服务，实现了资源管理、任务调度和API响应等功能
 type APIServer struct {
+	sync.RWMutex
+
 	config        Config
 	restRouter    *gin.Engine
 	nodeRouter    *gin.Engine
 	restEndpoints map[string]HTTPEndpoint
 	nodeEndpoints map[string]HTTPEndpoint
-	stopChan      chan struct{}
+	jobQueues     map[string]*common.JobQueue
 }
 
 // NewAPIServer 用以创建和初始化API Server实例
@@ -51,7 +54,7 @@ func NewAPIServer() *APIServer {
 		},
 		restEndpoints: make(map[string]HTTPEndpoint),
 		nodeEndpoints: make(map[string]HTTPEndpoint),
-		stopChan:      make(chan struct{}),
+		jobQueues:     make(map[string]*common.JobQueue),
 	}
 }
 
@@ -125,7 +128,6 @@ func (svc *APIServer) Run() int {
 	if err := httpNode.Shutdown(context.Background()); err != nil {
 		log.Fatal("Server Shutdown failed:", err)
 	}
-	close(svc.stopChan)
 	wg.Wait()
 
 	log.Println("Server exited")
@@ -147,13 +149,13 @@ func (svc *APIServer) registerRestEndpoint(router *gin.Engine) {
 		endpoint.registerRoute()
 	}
 	// 绑定/jobs相关路径处理
-	registerEndpoint(&JobEndpoint{handler: svc})
+	registerEndpoint(&JobEndpoint{server: svc})
 	// 绑定/tasks相关路径处理
-	registerEndpoint(&TaskEndpoint{handler: svc})
+	registerEndpoint(&TaskEndpoint{server: svc})
 	// 绑定/queues相关路径处理
-	registerEndpoint(&QueueEndpoint{handler: svc})
+	registerEndpoint(&QueueEndpoint{server: svc})
 	// 绑定/nodes相关路径处理
-	registerEndpoint(&NodeEndpoint{handler: svc})
+	registerEndpoint(&NodeEndpoint{server: svc})
 }
 
 func (svc *APIServer) registerNodeEndpoint(router *gin.Engine) {
@@ -165,5 +167,13 @@ func (svc *APIServer) registerNodeEndpoint(router *gin.Engine) {
 		endpoint.registerRoute()
 	}
 	// 绑定/heartbeat相关路径处理
-	registerEndpoint(&HeartbeatEndpoint{handler: svc})
+	registerEndpoint(&HeartbeatEndpoint{server: svc})
+}
+
+func (svc *APIServer) getJobQueue(name string) *common.JobQueue {
+	queue, ok := svc.jobQueues[name]
+	if ok {
+		return queue
+	}
+	return nil
 }
