@@ -1,4 +1,4 @@
-package api
+package server
 
 import (
 	"fmt"
@@ -7,8 +7,8 @@ import (
 )
 
 func (svc *APIServer) requestCreateJob(spec *common.JobSpec) error {
-	svc.Lock()
-	defer svc.Unlock()
+	svc.state.Lock()
+	defer svc.state.Unlock()
 
 	queue := svc.state.getJobQueue(spec.Queue)
 	if queue == nil {
