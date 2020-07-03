@@ -112,7 +112,7 @@ func (svc *APIServer) Run() int {
 		case <-quit:
 			stopped = true
 		case <-timer.C:
-			log.Println("API Server timer event")
+			//log.Println("API Server timer event")
 			timer.Reset(time.Second)
 		}
 	}
@@ -158,4 +158,12 @@ func (svc *APIServer) registerRestEndpoint(router *gin.Engine) {
 
 func (svc *APIServer) registerNodeEndpoint(router *gin.Engine) {
 	svc.nodeRouter = router
+
+	// 绑定针对各种资源的RESTful API路径
+	registerEndpoint := func(endpoint HTTPEndpoint) {
+		svc.nodeEndpoints[endpoint.restPrefix()] = endpoint
+		endpoint.registerRoute()
+	}
+	// 绑定/heartbeat相关路径处理
+	registerEndpoint(&HeartbeatEndpoint{handler: svc})
 }
