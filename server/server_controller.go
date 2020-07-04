@@ -119,7 +119,6 @@ func (svc *APIServer) Run() int {
 		case <-quit:
 			stopped = true
 		case <-timer.C:
-			//log.Println("API Server timer event")
 			timer.Reset(time.Second)
 		}
 	}

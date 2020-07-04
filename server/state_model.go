@@ -20,7 +20,7 @@ const (
 type StateModel struct {
 	sync.RWMutex
 	dbPath    string
-	dbFile    *bolt.DB
+	boltDB    *BoltDB
 	jobQueues map[string]*common.JobQueue
 	jobMap    map[string]*common.Job
 	jobList   []*common.Job
@@ -49,10 +49,11 @@ func (m *StateModel) initState(path string) error {
 }
 
 func (m *StateModel) clearState() {
-	if m.dbFile != nil {
-		m.dbFile.Close()
+	if m.boltDB != nil {
+		log.Println("Close database file")
+		m.boltDB.Close()
 	}
-	m.dbFile = nil
+	m.boltDB = nil
 }
 
 func createDatabaseFile(dbfile string) error {
@@ -60,19 +61,51 @@ func createDatabaseFile(dbfile string) error {
 	if err := util.MakeDirAll(filepath.Dir(dbfile)); err != nil {
 		return err
 	}
-	dbFile, err := bolt.Open(dbfile, 0600, &bolt.Options{Timeout: 3 * time.Second})
+	db, err := bolt.Open(dbfile, 0600, &bolt.Options{Timeout: 3 * time.Second})
 	if err != nil {
 		os.RemoveAll(dbfile)
 		return err
 	}
-	defer dbFile.Close()
+	boltDB := &BoltDB{db}
+	defer boltDB.Close()
+
+	// 创建保存数据使用的bucket
+	buckets := []string{"config", "queue", "job", "task"}
+	for _, name := range buckets {
+		if err := boltDB.createBucket(name); err != nil {
+			return err
+		}
+	}
+	// 创建默认作业队列
+	if err := boltDB.putJSON("queue", "default", common.NewJobQueue("default", true, 1000)); err != nil {
+		return err
+	}
+
 	log.Println("Database file created")
 	return nil
 }
 
 func (m *StateModel) loadStateFromDatabase() error {
-	dbFile, err := bolt.Open(m.dbPath, 0600, &bolt.Options{Timeout: 3 * time.Second})
-	m.dbFile = dbFile
+	log.Printf("Loading server data from local database file \"%s\"...", m.dbPath)
+	db, err := bolt.Open(m.dbPath, 0600, &bolt.Options{Timeout: 3 * time.Second})
+	if err != nil {
+		return err
+	}
+	m.boltDB = &BoltDB{db}
+
+	// 加载所有作业队列信息
+	if err := m.boltDB.getBucketJSON("queue", func() interface{} {
+		return &common.JobQueue{}
+	}, func(v interface{}) {
+		if queue, ok := v.(*common.JobQueue); ok {
+			m.jobQueues[queue.Name] = queue
+		}
+	}); err != nil {
+		return err
+	}
+	log.Printf("%d job queue(s) loaded", len(m.jobQueues))
+
+	log.Printf("Server data loaded")
 	return err
 }
 
