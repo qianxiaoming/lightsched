@@ -59,7 +59,12 @@ func NewAPIServer() *APIServer {
 
 // Run 是API Server的主运行逻辑，返回时服务即结束运行
 func (svc *APIServer) Run() int {
-	fmt.Println("Light Scheduler API Server is starting up...")
+	log.Println("Light Scheduler API Server is starting up...")
+	if err := svc.state.initState(svc.config.dataPath); err != nil {
+		log.Printf("Failed to initialize state data: %v\n", err)
+		return 1
+	}
+	defer svc.state.clearState()
 
 	var wg sync.WaitGroup
 	waitForStop := func(wait func()) {
