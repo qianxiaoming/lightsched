@@ -45,19 +45,27 @@ type Job struct {
 	ExecTime   time.Time
 	FinishTime time.Time
 	State      JobState
-	Progress   int
+	Progress   int    `json:"-"`
+	JSON       []byte `json:"-"` // 缓存Job的JSON表达
 }
 
 // NewJobWithSpec 根据指定的JobSpec内容创建对应的Job对象
 func NewJobWithSpec(spec *JobSpec) *Job {
 	job := &Job{
-		JobSpec:    *spec,
-		Groups:     make([]*TaskGroup, len(spec.GroupSpecs)),
-		SubmitTime: time.Now(),
-		State:      JobQueued,
-		Progress:   0}
+		JobSpec:  *spec,
+		Groups:   make([]*TaskGroup, len(spec.GroupSpecs)),
+		State:    JobQueued,
+		Progress: 0}
 	for i, g := range spec.GroupSpecs {
 		job.Groups[i] = NewTaskGroupWithSpec(fmt.Sprintf("%s.%d", job.ID, i), g)
 	}
 	return job
+}
+
+func (job *Job) CountTasks() int {
+	count := 0
+	for _, g := range job.Groups {
+		count = count + len(g.Tasks)
+	}
+	return count
 }

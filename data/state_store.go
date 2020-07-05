@@ -89,7 +89,7 @@ func createDatabaseFile(dbfile string) error {
 		}
 	}
 	// 创建默认作业队列
-	if err := boltDB.putJSON("queue", DefaultQueueName, model.JobQueueSpec{Name: "default", Enabled: true, Priority: 1000}); err != nil {
+	if _, err := boltDB.putJSON("queue", DefaultQueueName, model.JobQueueSpec{Name: "default", Enabled: true, Priority: 1000}); err != nil {
 		return err
 	}
 
@@ -137,15 +137,35 @@ func (m *StateStore) GetJob(id string) *model.Job {
 	return nil
 }
 
-func (m *StateStore) AppendJob(job *model.Job) error {
+func (m *StateStore) AddJob(job *model.Job) error {
 	m.Lock()
 	defer m.Unlock()
+
+	// 确定ID的唯一性
+	_, ok := m.jobMap[job.ID]
+	if ok {
+		return fmt.Errorf("Job ID \"%s\" conflicted with others", job.ID)
+	}
 
 	// 确定所属作业队列
 	queue := m.GetJobQueue(job.Queue)
 	if queue == nil {
 		return fmt.Errorf("Invalid queue name \"%s\"", job.Queue)
 	}
+	job.SubmitTime = time.Now()
+
+	// 写入数据库文件
+	json, err := m.boltDB.putJSON("job", job.ID, job)
+	if err != nil {
+		return fmt.Errorf("Unable to save submitted job \"%s\"(%s): %v", job.Name, job.ID, err)
+	}
+	job.JSON = json
+
+	// 追加到Job列表中
 	queue.Jobs = append(queue.Jobs, job)
+	m.jobMap[job.ID] = job
+	m.jobList = append(m.jobList, job)
+
+	log.Printf("Job \"%s\"(%s) with %d task(s) has beed added to queue \"%s\"", job.Name, job.ID, job.CountTasks(), job.Queue)
 	return nil
 }

@@ -33,12 +33,12 @@ func (db *BoltDB) put(bucket string, key string, value []byte) error {
 	})
 }
 
-func (db *BoltDB) putJSON(bucket string, key string, value interface{}) error {
+func (db *BoltDB) putJSON(bucket string, key string, value interface{}) ([]byte, error) {
 	var err error
 	if b, err := json.Marshal(value); err == nil {
-		return db.put(bucket, key, b)
+		return b, db.put(bucket, key, b)
 	}
-	return err
+	return nil, err
 }
 
 func (db *BoltDB) getJSON(bucket string, key string, value interface{}) (bool, error) {
