@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -26,14 +27,14 @@ const (
 
 // JobSpec 表示提交的作业的基本信息，包含多个任务组的描述。
 type JobSpec struct {
-	ID          string
-	Name        string
-	Queue       string
-	Priority    int
-	Labels      map[string]string
-	Schedulable bool
-	MaxErrors   int
-	GroupSpecs  []TaskGroupSpec
+	ID          string            `json:"id"`
+	Name        string            `json:"name"`
+	Queue       string            `json:"queue"`
+	Priority    int               `json:"priority,omitempty"`
+	Labels      map[string]string `json:"labels,omitempty"`
+	Schedulable bool              `json:"schedulable"`
+	MaxErrors   int               `json:"max_errors,omitempty"`
+	GroupSpecs  []*TaskGroupSpec  `json:"groups"`
 }
 
 // Job 表示要执行的多个任务组集合。任务组之间可以有依赖关系。
@@ -55,6 +56,8 @@ func NewJobWithSpec(spec *JobSpec) *Job {
 		SubmitTime: time.Now(),
 		State:      JobQueued,
 		Progress:   0}
-
+	for i, g := range spec.GroupSpecs {
+		job.Groups[i] = NewTaskGroupWithSpec(fmt.Sprintf("%s.%d", job.ID, i), g)
+	}
 	return job
 }

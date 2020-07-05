@@ -89,7 +89,7 @@ func createDatabaseFile(dbfile string) error {
 		}
 	}
 	// 创建默认作业队列
-	if err := boltDB.putJSON("queue", DefaultQueueName, model.NewJobQueue(DefaultQueueName, true, 1000)); err != nil {
+	if err := boltDB.putJSON("queue", DefaultQueueName, model.JobQueueSpec{Name: "default", Enabled: true, Priority: 1000}); err != nil {
 		return err
 	}
 
@@ -146,5 +146,6 @@ func (m *StateStore) AppendJob(job *model.Job) error {
 	if queue == nil {
 		return fmt.Errorf("Invalid queue name \"%s\"", job.Queue)
 	}
+	queue.Jobs = append(queue.Jobs, job)
 	return nil
 }
