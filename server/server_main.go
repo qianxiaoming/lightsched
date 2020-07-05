@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/qianxiaoming/lightsched/data"
 )
 
 // Config 是API Server的配置信息
@@ -33,7 +34,7 @@ type HTTPEndpoint interface {
 // APIServer 是集群的中心服务，实现了资源管理、任务调度和API响应等功能
 type APIServer struct {
 	config        Config
-	state         *StateModel
+	state         *data.StateStore
 	schedFlag     int32
 	schedCycle    int64
 	restRouter    *gin.Engine
@@ -49,10 +50,10 @@ func NewAPIServer() *APIServer {
 			address:  "",
 			restPort: 20516,
 			nodePort: 20517,
-			dataPath: "./data",
+			dataPath: "./cluster",
 			logPath:  "./log",
 		},
-		state:         NewStateModel(),
+		state:         data.NewStateStore(),
 		schedFlag:     0,
 		schedCycle:    0,
 		restEndpoints: make(map[string]HTTPEndpoint),
@@ -63,11 +64,11 @@ func NewAPIServer() *APIServer {
 // Run 是API Server的主运行逻辑，返回时服务即结束运行
 func (svc *APIServer) Run() int {
 	log.Println("Light Scheduler API Server is starting up...")
-	if err := svc.state.initState(svc.config.dataPath); err != nil {
+	if err := svc.state.InitState(svc.config.dataPath); err != nil {
 		log.Printf("Failed to initialize state data: %v\n", err)
 		return 1
 	}
-	defer svc.state.clearState()
+	defer svc.state.ClearState()
 
 	var wg sync.WaitGroup
 	waitForStop := func(wait func()) {

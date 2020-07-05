@@ -1,4 +1,4 @@
-package server
+package data
 
 import (
 	"fmt"
@@ -14,12 +14,23 @@ import (
 )
 
 const (
+	// DatabaseFileName 是系统默认主数据库的名字
 	DatabaseFileName = "lightsched.db"
+	// DefaultQueueName 是默认作业队列的名字
 	DefaultQueueName = "default"
 )
 
-// StateModel 是API Server的内部状态数据
-type StateModel struct {
+var (
+	// DatabaseBuckets 是数据库中存储数据单元的默认名称
+	// config: 系统的配置信息
+	// queue: 作业队列信息
+	// job: 所有Job信息（包含已经完成的）
+	// task: 所有计算任务信息。计算任务的唯一标识包含所属Job的标识，使用:分隔（便于前缀遍历）
+	DatabaseBuckets = [4]string{"config", "queue", "job", "task"}
+)
+
+// StateStore 是API Server的内部状态数据
+type StateStore struct {
 	sync.RWMutex
 	dbPath    string
 	boltDB    *BoltDB
@@ -28,29 +39,29 @@ type StateModel struct {
 	jobList   []*common.Job
 }
 
-// NewStateModel 创建服务的内部状态数据对象
-func NewStateModel() *StateModel {
-	return &StateModel{
-		jobQueues: make(map[string]*common.JobQueue),
-		jobMap:    make(map[string]*common.Job),
+// NewStateStore 创建服务的内部状态数据对象
+func NewStateStore() *StateStore {
+	return &StateStore{
+		jobQueues: make(map[string]*common.JobQueue, 1),
+		jobMap:    make(map[string]*common.Job, 128),
 		jobList:   make([]*common.Job, 0, 128),
 	}
 }
 
-func (m *StateModel) initState(path string) error {
+func (m *StateStore) InitState(path string) error {
 	m.dbPath = filepath.Join(util.GetCurrentPath(), path, DatabaseFileName)
 	if !util.PathExists(m.dbPath) {
 		if err := createDatabaseFile(m.dbPath); err != nil {
 			return err
 		}
 	}
-	if err := m.loadStateFromDatabase(); err != nil {
+	if err := m.loadFromDatabase(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (m *StateModel) clearState() {
+func (m *StateStore) ClearState() {
 	if m.boltDB != nil {
 		log.Println("Close database file")
 		m.boltDB.Close()
@@ -72,8 +83,7 @@ func createDatabaseFile(dbfile string) error {
 	defer boltDB.Close()
 
 	// 创建保存数据使用的bucket
-	buckets := []string{"config", "queue", "job", "task"}
-	for _, name := range buckets {
+	for _, name := range DatabaseBuckets {
 		if err := boltDB.createBucket(name); err != nil {
 			return err
 		}
@@ -87,7 +97,7 @@ func createDatabaseFile(dbfile string) error {
 	return nil
 }
 
-func (m *StateModel) loadStateFromDatabase() error {
+func (m *StateStore) loadFromDatabase() error {
 	log.Printf("Loading server data from local database file \"%s\"...", m.dbPath)
 	db, err := bolt.Open(m.dbPath, 0600, &bolt.Options{Timeout: 3 * time.Second})
 	if err != nil {
@@ -111,7 +121,7 @@ func (m *StateModel) loadStateFromDatabase() error {
 	return err
 }
 
-func (m *StateModel) getJobQueue(name string) *common.JobQueue {
+func (m *StateStore) GetJobQueue(name string) *common.JobQueue {
 	queue, ok := m.jobQueues[name]
 	if ok {
 		return queue
@@ -119,7 +129,7 @@ func (m *StateModel) getJobQueue(name string) *common.JobQueue {
 	return nil
 }
 
-func (m *StateModel) getJob(id string) *common.Job {
+func (m *StateStore) GetJob(id string) *common.Job {
 	job, ok := m.jobMap[id]
 	if ok {
 		return job
@@ -127,12 +137,12 @@ func (m *StateModel) getJob(id string) *common.Job {
 	return nil
 }
 
-func (m *StateModel) appendJob(job *common.Job) error {
+func (m *StateStore) AppendJob(job *common.Job) error {
 	m.Lock()
 	defer m.Unlock()
 
 	// 确定所属作业队列
-	queue := m.getJobQueue(job.Queue)
+	queue := m.GetJobQueue(job.Queue)
 	if queue == nil {
 		return fmt.Errorf("Invalid queue name \"%s\"", job.Queue)
 	}
