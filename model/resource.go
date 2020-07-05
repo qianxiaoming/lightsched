@@ -1,4 +1,4 @@
-package common
+package model
 
 // ResourceCPU 是CPU资源的需求或提供信息
 type ResourceCPU struct {

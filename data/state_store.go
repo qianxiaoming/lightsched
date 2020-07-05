@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/qianxiaoming/lightsched/common"
+	"github.com/qianxiaoming/lightsched/model"
 	"github.com/qianxiaoming/lightsched/util"
 	bolt "go.etcd.io/bbolt"
 )
@@ -34,17 +34,17 @@ type StateStore struct {
 	sync.RWMutex
 	dbPath    string
 	boltDB    *BoltDB
-	jobQueues map[string]*common.JobQueue
-	jobMap    map[string]*common.Job
-	jobList   []*common.Job
+	jobQueues map[string]*model.JobQueue
+	jobMap    map[string]*model.Job
+	jobList   []*model.Job
 }
 
 // NewStateStore 创建服务的内部状态数据对象
 func NewStateStore() *StateStore {
 	return &StateStore{
-		jobQueues: make(map[string]*common.JobQueue, 1),
-		jobMap:    make(map[string]*common.Job, 128),
-		jobList:   make([]*common.Job, 0, 128),
+		jobQueues: make(map[string]*model.JobQueue, 1),
+		jobMap:    make(map[string]*model.Job, 128),
+		jobList:   make([]*model.Job, 0, 128),
 	}
 }
 
@@ -89,7 +89,7 @@ func createDatabaseFile(dbfile string) error {
 		}
 	}
 	// 创建默认作业队列
-	if err := boltDB.putJSON("queue", DefaultQueueName, common.NewJobQueue(DefaultQueueName, true, 1000)); err != nil {
+	if err := boltDB.putJSON("queue", DefaultQueueName, model.NewJobQueue(DefaultQueueName, true, 1000)); err != nil {
 		return err
 	}
 
@@ -107,9 +107,9 @@ func (m *StateStore) loadFromDatabase() error {
 
 	// 加载所有作业队列信息
 	if err := m.boltDB.getBucketJSON("queue", func() interface{} {
-		return &common.JobQueue{}
+		return &model.JobQueue{}
 	}, func(v interface{}) {
-		if queue, ok := v.(*common.JobQueue); ok {
+		if queue, ok := v.(*model.JobQueue); ok {
 			m.jobQueues[queue.Name] = queue
 		}
 	}); err != nil {
@@ -121,7 +121,7 @@ func (m *StateStore) loadFromDatabase() error {
 	return err
 }
 
-func (m *StateStore) GetJobQueue(name string) *common.JobQueue {
+func (m *StateStore) GetJobQueue(name string) *model.JobQueue {
 	queue, ok := m.jobQueues[name]
 	if ok {
 		return queue
@@ -129,7 +129,7 @@ func (m *StateStore) GetJobQueue(name string) *common.JobQueue {
 	return nil
 }
 
-func (m *StateStore) GetJob(id string) *common.Job {
+func (m *StateStore) GetJob(id string) *model.Job {
 	job, ok := m.jobMap[id]
 	if ok {
 		return job
@@ -137,7 +137,7 @@ func (m *StateStore) GetJob(id string) *common.Job {
 	return nil
 }
 
-func (m *StateStore) AppendJob(job *common.Job) error {
+func (m *StateStore) AppendJob(job *model.Job) error {
 	m.Lock()
 	defer m.Unlock()
 

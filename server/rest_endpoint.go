@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/qianxiaoming/lightsched/common"
+	"github.com/qianxiaoming/lightsched/model"
 )
 
 func responseError(code int, format string, err error, c *gin.Context) {
@@ -39,7 +39,7 @@ func (e *JobEndpoint) restPrefix() string {
 }
 
 func (e *JobEndpoint) createJob(c *gin.Context) {
-	spec := &common.JobSpec{}
+	spec := &model.JobSpec{}
 	if err := c.BindJSON(spec); err == nil {
 		log.Printf("Request to create job \"%s\"(%s) in queue \"%s\" with %d task group(s)...\n", spec.Name, spec.ID, spec.Queue, len(spec.GroupSpecs))
 		err = e.server.requestCreateJob(spec)
