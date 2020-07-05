@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 
 const (
 	DatabaseFileName = "lightsched.db"
+	DefaultQueueName = "default"
 )
 
 // StateModel 是API Server的内部状态数据
@@ -77,7 +79,7 @@ func createDatabaseFile(dbfile string) error {
 		}
 	}
 	// 创建默认作业队列
-	if err := boltDB.putJSON("queue", "default", common.NewJobQueue("default", true, 1000)); err != nil {
+	if err := boltDB.putJSON("queue", DefaultQueueName, common.NewJobQueue(DefaultQueueName, true, 1000)); err != nil {
 		return err
 	}
 
@@ -121,6 +123,18 @@ func (m *StateModel) getJob(id string) *common.Job {
 	job, ok := m.jobMap[id]
 	if ok {
 		return job
+	}
+	return nil
+}
+
+func (m *StateModel) appendJob(job *common.Job) error {
+	m.Lock()
+	defer m.Unlock()
+
+	// 确定所属作业队列
+	queue := m.getJobQueue(job.Queue)
+	if queue == nil {
+		return fmt.Errorf("Invalid queue name \"%s\"", job.Queue)
 	}
 	return nil
 }

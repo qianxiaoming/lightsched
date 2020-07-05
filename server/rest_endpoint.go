@@ -39,10 +39,10 @@ func (e *JobEndpoint) restPrefix() string {
 }
 
 func (e *JobEndpoint) createJob(c *gin.Context) {
-	var spec common.JobSpec
-	if err := c.BindJSON(&spec); err == nil {
-		log.Printf("Request to create job \"%s\"(%s) in queue \"%s\" with %d task group(s)...\n", spec.Name, spec.ID, spec.Queue, len(spec.Groups))
-		err = e.server.requestCreateJob(&spec)
+	spec := &common.JobSpec{}
+	if err := c.BindJSON(spec); err == nil {
+		log.Printf("Request to create job \"%s\"(%s) in queue \"%s\" with %d task group(s)...\n", spec.Name, spec.ID, spec.Queue, len(spec.GroupSpecs))
+		err = e.server.requestCreateJob(spec)
 		if err == nil {
 			c.JSON(http.StatusCreated, gin.H{"id": spec.ID})
 		} else {

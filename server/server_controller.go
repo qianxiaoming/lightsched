@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -31,10 +32,10 @@ type HTTPEndpoint interface {
 
 // APIServer 是集群的中心服务，实现了资源管理、任务调度和API响应等功能
 type APIServer struct {
-	sync.RWMutex
-
 	config        Config
 	state         *StateModel
+	schedFlag     int32
+	schedCycle    int64
 	restRouter    *gin.Engine
 	nodeRouter    *gin.Engine
 	restEndpoints map[string]HTTPEndpoint
@@ -52,6 +53,8 @@ func NewAPIServer() *APIServer {
 			logPath:  "./log",
 		},
 		state:         NewStateModel(),
+		schedFlag:     0,
+		schedCycle:    0,
 		restEndpoints: make(map[string]HTTPEndpoint),
 		nodeEndpoints: make(map[string]HTTPEndpoint),
 	}
@@ -119,6 +122,7 @@ func (svc *APIServer) Run() int {
 		case <-quit:
 			stopped = true
 		case <-timer.C:
+			svc.runServerCycle()
 			timer.Reset(time.Second)
 		}
 	}
@@ -135,6 +139,10 @@ func (svc *APIServer) Run() int {
 
 	log.Println("Server exited")
 	return 0
+}
+
+func (svc *APIServer) setScheduleFlag() {
+	atomic.AddInt32(&svc.schedFlag, 1)
 }
 
 func (svc *APIServer) registerRestEndpoint(router *gin.Engine) {
@@ -171,4 +179,13 @@ func (svc *APIServer) registerNodeEndpoint(router *gin.Engine) {
 	}
 	// 绑定/heartbeat相关路径处理
 	registerEndpoint(&HeartbeatEndpoint{server: svc})
+}
+
+func (svc *APIServer) runServerCycle() {
+	// 检查调度标志是否被设置
+	flag := atomic.SwapInt32(&svc.schedFlag, 0)
+	if flag != 0 {
+		svc.schedCycle = svc.schedCycle + 1
+		log.Printf("Run schedule cycle %d...\n", svc.schedCycle)
+	}
 }

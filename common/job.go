@@ -24,17 +24,22 @@ const (
 	JobTerminated
 )
 
-// Job 表示要执行的多个任务组集合。任务组之间可以有依赖关系。
-type Job struct {
+// JobSpec 表示提交的作业的基本信息，包含多个任务组的描述。
+type JobSpec struct {
 	ID          string
 	Name        string
-	Queue       *JobQueue
-	Labels      map[string]string
+	Queue       string
 	Priority    int
+	Labels      map[string]string
 	Schedulable bool
 	MaxErrors   int
-	TaskGroups  []*TaskGroup
+	GroupSpecs  []TaskGroupSpec
+}
 
+// Job 表示要执行的多个任务组集合。任务组之间可以有依赖关系。
+type Job struct {
+	JobSpec
+	Groups     []*TaskGroup
 	SubmitTime time.Time
 	ExecTime   time.Time
 	FinishTime time.Time
@@ -42,12 +47,14 @@ type Job struct {
 	Progress   int
 }
 
-// JobSpec 表示提交的作业的基本信息，包含多个任务组的描述。
-type JobSpec struct {
-	ID       string
-	Name     string
-	Queue    string
-	Priority int
-	Labels   map[string]string
-	Groups   []TaskGroupSpec
+// NewJobWithSpec 根据指定的JobSpec内容创建对应的Job对象
+func NewJobWithSpec(spec *JobSpec) *Job {
+	job := &Job{
+		JobSpec:    *spec,
+		Groups:     make([]*TaskGroup, len(spec.GroupSpecs)),
+		SubmitTime: time.Now(),
+		State:      JobQueued,
+		Progress:   0}
+
+	return job
 }
