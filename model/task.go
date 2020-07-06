@@ -42,24 +42,34 @@ type TaskSpec struct {
 
 // Task 是具体执行的计算任务
 type Task struct {
-	TaskSpec
-	ID         string
-	Resources  *ResourceSet
-	State      TaskState
-	NodeName   string
-	Progress   int
-	ExitCode   int
-	StartTime  time.Time
-	FinishTime time.Time
-	SystemTime time.Duration
-	UserTime   time.Duration
+	ID         string            `json:"id"`
+	Name       string            `json:"name"`
+	Envs       []string          `json:"envs,omitempty"`
+	Command    string            `json:"command,omitempty"`
+	Args       string            `json:"args,omitempty"`
+	WorkDir    string            `json:"workdir,omitempty"`
+	Labels     map[string]string `json:"labels,omitempty"`
+	Resources  *ResourceSet      `json:"resources,omitempty"`
+	State      TaskState         `json:"state"`
+	NodeName   string            `json:"node,omitempty"`
+	Progress   int               `json:"-"`
+	ExitCode   int               `json:"exit_code"`
+	StartTime  time.Time         `json:"start_time"`
+	FinishTime time.Time         `json:"finish_time"`
+	SystemTime time.Duration     `json:"system_time,omitempty"`
+	UserTime   time.Duration     `json:"user_time,omitempty"`
 }
 
 // NewTaskWithSpec 根据指定的TaskSpec内容创建对应的Task对象
 func NewTaskWithSpec(group *TaskGroup, id int, spec *TaskSpec) *Task {
 	task := &Task{
-		TaskSpec:  *spec,
 		ID:        fmt.Sprintf("%s.%d", group.ID, id),
+		Name:      spec.Name,
+		Envs:      spec.Envs,
+		Command:   spec.Command,
+		Args:      spec.Args,
+		WorkDir:   spec.WorkDir,
+		Labels:    spec.Labels,
 		Resources: NewResourceSetWithSpec(spec.ResourceSpec),
 		State:     TaskQueued,
 		Progress:  0,
@@ -99,21 +109,31 @@ type TaskGroupSpec struct {
 
 // TaskGroup 表示一组执行命令相同的任务，但每个任务的参数可以不同
 type TaskGroup struct {
-	TaskGroupSpec
-	ID          string
-	Resources   *ResourceSet
-	Completions int
-	Tasks       []*Task
+	ID          string            `json:"id"`
+	Name        string            `json:"name"`
+	Command     string            `json:"command,omitempty"`
+	WorkDir     string            `json:"workdir,omitempty"`
+	Labels      map[string]string `json:"labels,omitempty"`
+	Envs        []string          `json:"envs,omitempty"`
+	Dependents  []string          `json:"dependents,omitempty"`
+	Resources   *ResourceSet      `json:"resources,omitempty"`
+	Completions int               `json:"-"`
+	Tasks       []*Task           `json:"tasks"`
 }
 
 // NewTaskGroupWithSpec 根据指定的TaskGroupSpec内容创建对应的TaskGroup对象
 func NewTaskGroupWithSpec(id string, spec *TaskGroupSpec) *TaskGroup {
 	group := &TaskGroup{
-		TaskGroupSpec: *spec,
-		ID:            id,
-		Resources:     NewResourceSetWithSpec(spec.ResourceSpec),
-		Completions:   0,
-		Tasks:         make([]*Task, len(spec.TaskSpecs)),
+		ID:          id,
+		Name:        spec.Name,
+		Command:     spec.Command,
+		WorkDir:     spec.WorkDir,
+		Envs:        spec.Envs,
+		Labels:      spec.Labels,
+		Dependents:  spec.Dependents,
+		Resources:   NewResourceSetWithSpec(spec.ResourceSpec),
+		Completions: 0,
+		Tasks:       make([]*Task, len(spec.TaskSpecs)),
 	}
 	for i, t := range spec.TaskSpecs {
 		group.Tasks[i] = NewTaskWithSpec(group, i, t)

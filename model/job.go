@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -39,33 +40,61 @@ type JobSpec struct {
 
 // Job 表示要执行的多个任务组集合。任务组之间可以有依赖关系。
 type Job struct {
-	JobSpec
-	Groups     []*TaskGroup
-	SubmitTime time.Time
-	ExecTime   time.Time
-	FinishTime time.Time
-	State      JobState
-	Progress   int    `json:"-"`
-	JSON       []byte `json:"-"` // 缓存Job的JSON表达
+	ID          string            `json:"id"`
+	Name        string            `json:"name"`
+	Queue       string            `json:"queue"`
+	Priority    int               `json:"priority"`
+	Labels      map[string]string `json:"labels"`
+	Schedulable bool              `json:"schedulable"`
+	MaxErrors   int               `json:"max_errors"`
+	Groups      []*TaskGroup      `json:"groups"`
+	SubmitTime  time.Time         `json:"submit_time"`
+	ExecTime    time.Time         `json:"exec_time"`
+	FinishTime  time.Time         `json:"finish_time"`
+	State       JobState          `json:"state"`
+	Progress    int               `json:"-"`
+	TotalTasks  int               `json:"-"`
+	JSON        []byte            `json:"-"` // 缓存Job的JSON表达
 }
 
 // NewJobWithSpec 根据指定的JobSpec内容创建对应的Job对象
 func NewJobWithSpec(spec *JobSpec) *Job {
 	job := &Job{
-		JobSpec:  *spec,
-		Groups:   make([]*TaskGroup, len(spec.GroupSpecs)),
-		State:    JobQueued,
-		Progress: 0}
+		ID:          spec.ID,
+		Name:        spec.Name,
+		Queue:       spec.Queue,
+		Priority:    spec.Priority,
+		Labels:      spec.Labels,
+		Schedulable: spec.Schedulable,
+		MaxErrors:   spec.MaxErrors,
+		Groups:      make([]*TaskGroup, len(spec.GroupSpecs)),
+		State:       JobQueued,
+		Progress:    0,
+		TotalTasks:  0}
 	for i, g := range spec.GroupSpecs {
 		job.Groups[i] = NewTaskGroupWithSpec(fmt.Sprintf("%s.%d", job.ID, i), g)
 	}
 	return job
 }
 
+// CountTasks 计算Job包含的任务总数
 func (job *Job) CountTasks() int {
-	count := 0
-	for _, g := range job.Groups {
-		count = count + len(g.Tasks)
+	if job.TotalTasks == 0 {
+		for _, g := range job.Groups {
+			job.TotalTasks = job.TotalTasks + len(g.Tasks)
+		}
 	}
-	return count
+	return job.TotalTasks
+}
+
+// GetJSON 获取Job的JSON表达。如果失败返回nil。
+func (job *Job) GetJSON() []byte {
+	if job.JSON == nil {
+		if b, err := json.Marshal(job); err == nil {
+			job.JSON = b
+		} else {
+			panic(err)
+		}
+	}
+	return job.JSON
 }

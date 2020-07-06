@@ -10,39 +10,32 @@ import (
 
 // ResourceCPU 是CPU资源的需求或提供信息
 type ResourceCPU struct {
-	Cores     float32 // 使用的CPU个数，可以少于或多于1个CPU
-	Frequency int     // 使用的CPU主频，单位MHz
-	MinFreq   int     // 要求的最低CPU主频，单位MHz
+	Cores     float32 `json:"cores"`     // 使用的CPU个数，可以少于或多于1个CPU
+	Frequency int     `json:"frequency"` // 使用的CPU主频，单位MHz
+	MinFreq   int     `json:"min_freq"`  // 要求的最低CPU主频，单位MHz
 }
 
 // ResourceGPU 是GPU资源的需求或提供信息G
 type ResourceGPU struct {
-	Cards  int // 使用的GPU个数
-	Cores  int // 要求的GPU最少核心数
-	Memory int // 要求的GPU最低显存
-	CUDA   int // 要求的CUDA最低版本，10.2为1020
-}
-
-// ResourceMem 是内存资源的需求或提供信息
-type ResourceMem struct {
-	Total int
-	Used  int
-	Free  int
+	Cards  int `json:"cards"`  // 使用的GPU个数
+	Cores  int `json:"cores"`  // 要求的GPU最少核心数
+	Memory int `json:"memory"` // 要求的GPU最低显存
+	CUDA   int `json:"cuda"`   // 要求的CUDA最低版本，10.2为1020
 }
 
 // ResourceSet 是CPU、GPU及其它类型资源的总和
 type ResourceSet struct {
-	CPU    ResourceCPU
-	GPU    ResourceGPU
-	Memory ResourceMem
-	Others map[string]int
+	CPU    ResourceCPU    `json:"cpu"`
+	GPU    ResourceGPU    `json:"gpu"`
+	Memory int            `json:"memory"`
+	Others map[string]int `json:"others,omitempty"`
 }
 
 // DefaultResourceSet 是赋给未指定任何资源需求任务的默认需求
 var DefaultResourceSet *ResourceSet = &ResourceSet{
 	CPU:    ResourceCPU{Cores: 0.8, Frequency: 2048},
 	GPU:    ResourceGPU{Cards: 0},
-	Memory: ResourceMem{Total: 1024},
+	Memory: 1024,
 }
 
 // ResourceSpec 是提交作业时指定的资源信息，资源值可以包含单位
@@ -115,7 +108,7 @@ func NewResourceSetWithSpec(spec *ResourceSpec) *ResourceSet {
 		if strings.Compare(u, "gi") == 0 {
 			v = v * 1000
 		}
-		res.Memory.Total = int(v)
+		res.Memory = int(v)
 	}
 	res.Others = spec.Others
 	return res

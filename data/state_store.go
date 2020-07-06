@@ -155,11 +155,10 @@ func (m *StateStore) AddJob(job *model.Job) error {
 	job.SubmitTime = time.Now()
 
 	// 写入数据库文件
-	json, err := m.boltDB.putJSON("job", job.ID, job)
+	err := m.boltDB.put("job", job.ID, job.GetJSON())
 	if err != nil {
 		return fmt.Errorf("Unable to save submitted job \"%s\"(%s): %v", job.Name, job.ID, err)
 	}
-	job.JSON = json
 
 	// 追加到Job列表中
 	queue.Jobs = append(queue.Jobs, job)
