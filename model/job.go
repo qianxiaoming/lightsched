@@ -71,8 +71,7 @@ func NewJobWithSpec(spec *JobSpec) *Job {
 		Groups:      make([]*TaskGroup, len(spec.GroupSpecs)),
 		State:       JobQueued,
 		Progress:    0,
-		TotalTasks:  0,
-		InitCycle:   -1}
+		TotalTasks:  0}
 	for i, g := range spec.GroupSpecs {
 		job.Groups[i] = NewTaskGroupWithSpec(fmt.Sprintf("%s.%d", job.ID, i), g)
 	}
@@ -101,6 +100,10 @@ func (job *Job) GetJSON() []byte {
 	return job.JSON
 }
 
+func (job *Job) GetSchedulableTasks() []*Task {
+	return nil
+}
+
 // IsSchedulable 判断Job是否可以被调度
 func (job *Job) IsSchedulable() bool {
 	return job.Schedulable && (job.State == JobQueued || job.State == JobWaiting || job.State == JobExecuting)
@@ -121,11 +124,6 @@ func (s JobSlice) Less(i, j int) bool {
 	if s[i].SubmitTime.Before(s[j].SubmitTime) {
 		return true
 	} else if s[i].SubmitTime.After(s[j].SubmitTime) {
-		return false
-	}
-	if s[i].InitCycle < s[j].InitCycle {
-		return true
-	} else if s[i].InitCycle > s[j].InitCycle {
 		return false
 	}
 	return s[i].TotalTasks < s[j].TotalTasks

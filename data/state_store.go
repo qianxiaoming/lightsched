@@ -153,9 +153,6 @@ func (m *StateStore) GetJob(id string) *model.Job {
 }
 
 func (m *StateStore) AddJob(job *model.Job) error {
-	m.Lock()
-	defer m.Unlock()
-
 	// 确定ID的唯一性
 	_, ok := m.jobMap[job.ID]
 	if ok {
