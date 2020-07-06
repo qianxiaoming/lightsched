@@ -123,7 +123,7 @@ func (svc *APIServer) Run() int {
 		case <-quit:
 			stopped = true
 		case <-timer.C:
-			svc.runServerCycle()
+			svc.runScheduleCycle()
 			timer.Reset(time.Second)
 		}
 	}
@@ -180,13 +180,4 @@ func (svc *APIServer) registerNodeEndpoint(router *gin.Engine) {
 	}
 	// 绑定/heartbeat相关路径处理
 	registerEndpoint(&HeartbeatEndpoint{server: svc})
-}
-
-func (svc *APIServer) runServerCycle() {
-	// 检查调度标志是否被设置
-	flag := atomic.SwapInt32(&svc.schedFlag, 0)
-	if flag != 0 {
-		svc.schedCycle = svc.schedCycle + 1
-		log.Printf("Run schedule cycle %d...\n", svc.schedCycle)
-	}
 }

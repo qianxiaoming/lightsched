@@ -55,6 +55,7 @@ type Job struct {
 	Progress    int               `json:"-"`
 	TotalTasks  int               `json:"-"`
 	JSON        []byte            `json:"-"` // 缓存Job的JSON表达
+	InitCycle   int64             `json:"-"` // 初次尝试调度的周期
 }
 
 // NewJobWithSpec 根据指定的JobSpec内容创建对应的Job对象
@@ -70,7 +71,8 @@ func NewJobWithSpec(spec *JobSpec) *Job {
 		Groups:      make([]*TaskGroup, len(spec.GroupSpecs)),
 		State:       JobQueued,
 		Progress:    0,
-		TotalTasks:  0}
+		TotalTasks:  0,
+		InitCycle:   -1}
 	for i, g := range spec.GroupSpecs {
 		job.Groups[i] = NewTaskGroupWithSpec(fmt.Sprintf("%s.%d", job.ID, i), g)
 	}
@@ -97,4 +99,38 @@ func (job *Job) GetJSON() []byte {
 		}
 	}
 	return job.JSON
+}
+
+// IsSchedulable 判断Job是否可以被调度
+func (job *Job) IsSchedulable() bool {
+	return job.Schedulable && (job.State == JobQueued || job.State == JobWaiting || job.State == JobExecuting)
+}
+
+type JobSlice []*Job
+
+func (s JobSlice) Len() int {
+	return len(s)
+}
+
+func (s JobSlice) Less(i, j int) bool {
+	if s[i].Priority > s[j].Priority {
+		return true
+	} else if s[i].Priority < s[j].Priority {
+		return false
+	}
+	if s[i].SubmitTime.Before(s[j].SubmitTime) {
+		return true
+	} else if s[i].SubmitTime.After(s[j].SubmitTime) {
+		return false
+	}
+	if s[i].InitCycle < s[j].InitCycle {
+		return true
+	} else if s[i].InitCycle > s[j].InitCycle {
+		return false
+	}
+	return s[i].TotalTasks < s[j].TotalTasks
+}
+
+func (s JobSlice) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
 }

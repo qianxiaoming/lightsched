@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"sync"
 	"time"
 
@@ -127,6 +128,20 @@ func (m *StateStore) GetJobQueue(name string) *model.JobQueue {
 		return queue
 	}
 	return nil
+}
+
+func (m *StateStore) GetOrderedJobQueues() []*model.JobQueue {
+	queues := make([]*model.JobQueue, 0, len(m.jobQueues))
+	for _, v := range m.jobQueues {
+		if v.Enabled {
+			queues = append(queues, v)
+		}
+	}
+	if len(queues) <= 1 {
+		return queues
+	}
+	sort.Sort(model.JobQueueSlice(queues))
+	return queues
 }
 
 func (m *StateStore) GetJob(id string) *model.Job {
