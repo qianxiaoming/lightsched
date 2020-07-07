@@ -34,15 +34,16 @@ func (s JobQueueSlice) Len() int {
 }
 
 func (s JobQueueSlice) Less(i, j int) bool {
-	return s[i].Priority < s[j].Priority
+	// 优先级高的排在前面
+	return s[i].Priority > s[j].Priority
 }
 
 func (s JobQueueSlice) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
 
-// GetOrderedJobs 获取按照优先级、时间和初次调度周期排序后的作业集合
-func (queue *JobQueue) GetOrderedJobs() map[int][]*Job {
+// GetSchedulableJobs 获取按照优先级、时间和初次调度周期排序后的作业集合
+func (queue *JobQueue) GetSchedulableJobs() map[int][]*Job {
 	// 将可调度的Job按照优先级放到不同的队列中
 	jobs := make(map[int][]*Job, 1)
 	for _, j := range queue.Jobs {

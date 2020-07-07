@@ -140,3 +140,8 @@ func NewTaskGroupWithSpec(id string, spec *TaskGroupSpec) *TaskGroup {
 	}
 	return group
 }
+
+// IsCompleted 判断TaskGroup中所有任务是否都已经成功完成
+func (group *TaskGroup) IsCompleted() bool {
+	return group.Completions == len(group.Tasks)
+}

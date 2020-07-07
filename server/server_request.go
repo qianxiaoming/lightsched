@@ -22,13 +22,14 @@ func (svc *APIServer) requestCreateJob(spec *model.JobSpec) error {
 
 	// 创建Job对象并生成TaskGroup及Task对象，保存到服务状态数据中
 	job := model.NewJobWithSpec(spec)
-	if job != nil {
+	if err := func() error {
 		svc.state.Lock()
 		defer svc.state.Unlock()
-		if err := svc.state.AddJob(job); err != nil {
-			return err
-		}
+		return svc.state.AddJob(job)
+	}(); err != nil {
+		return err
 	}
+
 	// 标记任务调度状态
 	svc.setScheduleFlag()
 

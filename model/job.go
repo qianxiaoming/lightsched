@@ -33,6 +33,7 @@ type JobSpec struct {
 	Queue       string            `json:"queue"`
 	Priority    int               `json:"priority,omitempty"`
 	Labels      map[string]string `json:"labels,omitempty"`
+	Taints      map[string]string `json:"taints,omitempty"`
 	Schedulable bool              `json:"schedulable"`
 	MaxErrors   int               `json:"max_errors,omitempty"`
 	GroupSpecs  []*TaskGroupSpec  `json:"groups"`
@@ -45,6 +46,7 @@ type Job struct {
 	Queue       string            `json:"queue"`
 	Priority    int               `json:"priority"`
 	Labels      map[string]string `json:"labels"`
+	Taints      map[string]string `json:"taints,omitempty"`
 	Schedulable bool              `json:"schedulable"`
 	MaxErrors   int               `json:"max_errors"`
 	Groups      []*TaskGroup      `json:"groups"`
@@ -66,6 +68,7 @@ func NewJobWithSpec(spec *JobSpec) *Job {
 		Queue:       spec.Queue,
 		Priority:    spec.Priority,
 		Labels:      spec.Labels,
+		Taints:      spec.Taints,
 		Schedulable: spec.Schedulable,
 		MaxErrors:   spec.MaxErrors,
 		Groups:      make([]*TaskGroup, len(spec.GroupSpecs)),
@@ -100,8 +103,42 @@ func (job *Job) GetJSON() []byte {
 	return job.JSON
 }
 
-func (job *Job) GetSchedulableTasks() []*Task {
+// GetTaskGroup 返回Job中指定名称的TaskGroup
+func (job *Job) GetTaskGroup(name string) *TaskGroup {
+	for _, group := range job.Groups {
+		if group.Name == name {
+			return group
+		}
+	}
 	return nil
+}
+
+// GetSchedulableTasks 返回Job中当前可以调度的所有Task
+func (job *Job) GetSchedulableTasks() []*Task {
+	var tasks []*Task = nil
+	for _, group := range job.Groups {
+		// 首先判定前置的TaskGroup是否都完成了
+		schedulable := true
+		for _, dependent := range group.Dependents {
+			g := job.GetTaskGroup(dependent)
+			if g != nil && !g.IsCompleted() {
+				schedulable = false
+				break
+			}
+		}
+		if !schedulable {
+			continue
+		}
+		for _, task := range group.Tasks {
+			if task.State == TaskQueued {
+				if tasks == nil {
+					tasks = make([]*Task, 0, 16)
+				}
+				tasks = append(tasks, task)
+			}
+		}
+	}
+	return tasks
 }
 
 // IsSchedulable 判断Job是否可以被调度

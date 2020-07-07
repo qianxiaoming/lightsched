@@ -130,7 +130,7 @@ func (m *StateStore) GetJobQueue(name string) *model.JobQueue {
 	return nil
 }
 
-func (m *StateStore) GetOrderedJobQueues() []*model.JobQueue {
+func (m *StateStore) GetSchedulableQueues() []*model.JobQueue {
 	queues := make([]*model.JobQueue, 0, len(m.jobQueues))
 	for _, v := range m.jobQueues {
 		if v.Enabled {
