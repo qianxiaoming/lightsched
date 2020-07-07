@@ -16,12 +16,28 @@ const (
 
 // WorkNode 代表实际执行计算任务的节点
 type WorkNode struct {
-	Name      string
-	Address   string
-	Port      int
-	OS        string
-	State     NodeState
-	Online    time.Time
-	Labels    map[string]string
-	resources ResourceSet
+	Name      string            `json:"name"`
+	Address   string            `json:"address"`
+	Port      int               `json:"port"`
+	OS        string            `json:"os"`
+	State     NodeState         `json:"state"`
+	Online    time.Time         `json:"online"`
+	Labels    map[string]string `json:"labels,omitempty"`
+	Taints    map[string]string `json:"taints,omitempty"`
+	Resources ResourceSet       `json:"resources"`
+	Reserved  ResourceSet       `json:"reserved"`
+}
+
+// NewWorkNode 创建计算节点对象。计算节点默认保留1.5个CPU和2Gi内存。
+func NewWorkNode(name string) *WorkNode {
+	return &WorkNode{
+		Name:  name,
+		State: NodeUnknown,
+		Reserved: ResourceSet{
+			CPU: ResourceCPU{
+				Cores: 1.5,
+			},
+			Memory: 2000,
+		},
+	}
 }

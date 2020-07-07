@@ -53,7 +53,7 @@ func scheduleCycle(svc *APIServer) []scheduleRecord {
 							continue
 						}
 						// 尝试调度task到某个节点上
-						task.State = model.TaskScheduled
+
 						scheduleTable = append(scheduleTable, scheduleRecord{task: task, node: ""})
 					}
 				}
@@ -82,7 +82,23 @@ func (svc *APIServer) runScheduleCycle() {
 	log.Printf("Run schedule cycle %v...\n", svc.schedCycle)
 
 	scheduleTable := scheduleCycle(svc)
-	if len(scheduleTable) != 0 {
+	if len(scheduleTable) == 0 {
+		return
+	}
 
+	// 修改被调度的Task状态。此时使用写锁保护，但要注意Job或Task数据可能已经被修改
+	svc.state.Lock()
+	defer svc.state.Unlock()
+	reschedule := false
+	for _, record := range scheduleTable {
+		if record.job.State == model.JobQueued || record.job.State == model.JobExecuting {
+
+		} else {
+			// Job的状态已经发生变化，该Job的所有Task无需调度，所以需要重新执行一次调度
+			reschedule = true
+		}
+	}
+	if reschedule {
+		svc.setScheduleFlag()
 	}
 }

@@ -35,6 +35,7 @@ type HTTPEndpoint interface {
 type APIServer struct {
 	config        Config
 	state         *data.StateStore
+	nodes         *data.NodeCache
 	schedFlag     int32
 	schedCycle    int64
 	restRouter    *gin.Engine
@@ -54,6 +55,7 @@ func NewAPIServer() *APIServer {
 			logPath:  "./log",
 		},
 		state:         data.NewStateStore(),
+		nodes:         data.NewNodeCache(),
 		schedFlag:     0,
 		schedCycle:    0,
 		restEndpoints: make(map[string]HTTPEndpoint),

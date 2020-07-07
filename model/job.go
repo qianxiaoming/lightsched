@@ -12,8 +12,6 @@ type JobState int32
 const (
 	// JobQueued 表示Job已经提交并入队
 	JobQueued JobState = iota
-	// JobWaiting 表示Job正在等待执行
-	JobWaiting
 	// JobExecuting 表示Job中的任务正在执行
 	JobExecuting
 	// JobHalted 表示Job暂停执行，不调度其中未执行的任务
@@ -143,7 +141,7 @@ func (job *Job) GetSchedulableTasks() []*Task {
 
 // IsSchedulable 判断Job是否可以被调度
 func (job *Job) IsSchedulable() bool {
-	return job.Schedulable && (job.State == JobQueued || job.State == JobWaiting || job.State == JobExecuting)
+	return job.Schedulable && (job.State == JobQueued || job.State == JobExecuting)
 }
 
 type JobSlice []*Job
