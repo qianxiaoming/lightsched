@@ -38,6 +38,7 @@ type APIServer struct {
 	nodes         *data.NodeCache
 	schedFlag     int32
 	schedCycle    int64
+	schedLog      bool
 	restRouter    *gin.Engine
 	nodeRouter    *gin.Engine
 	restEndpoints map[string]HTTPEndpoint
@@ -46,6 +47,10 @@ type APIServer struct {
 
 // NewAPIServer 用以创建和初始化API Server实例
 func NewAPIServer() *APIServer {
+	schedLog := false
+	if os.Getenv("LS_SCHEDULE_LOG") == "YES" {
+		schedLog = true
+	}
 	return &APIServer{
 		config: Config{
 			address:  "",
@@ -58,6 +63,7 @@ func NewAPIServer() *APIServer {
 		nodes:         data.NewNodeCache(),
 		schedFlag:     0,
 		schedCycle:    0,
+		schedLog:      schedLog,
 		restEndpoints: make(map[string]HTTPEndpoint),
 		nodeEndpoints: make(map[string]HTTPEndpoint),
 	}

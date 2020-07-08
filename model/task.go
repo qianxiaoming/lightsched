@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/qianxiaoming/lightsched/util"
@@ -89,10 +90,22 @@ func NewTaskWithSpec(group *TaskGroup, id int, spec *TaskSpec) *Task {
 			task.Resources = DefaultResourceSet
 		}
 	}
+	if task.Resources.CPU.Cores == 0.0 && task.Resources.CPU.Frequency == 0 &&
+		task.Resources.GPU.Cards == 0 && task.Resources.Memory == 0 {
+		// 如果没有指定主要资源需求，则将CPU和内存赋予默认值
+		task.Resources.CPU = DefaultResourceSet.CPU
+		task.Resources.Memory = DefaultResourceSet.Memory
+	}
 	// 环境变量和标签采取合并的方式
 	task.Envs = util.MergeStringSlice(task.Envs, group.Envs)
 	task.Labels = util.MergeStringMap(task.Labels, group.Labels)
 	return task
+}
+
+// ParseTaskID 解析Task的完整编号，分别返回Job, TaskGroup和Task的编号
+func ParseTaskID(id string) (string, string, string) {
+	ids := strings.Split(id, ".")
+	return ids[0], ids[1], ids[2]
 }
 
 // TaskGroupSpec 表示指定任务组的执行信息，其中包含多个任务描述。

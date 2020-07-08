@@ -7,12 +7,22 @@ import (
 	"github.com/qianxiaoming/lightsched/model"
 )
 
-type scheduleRecord struct {
-	job  *model.Job
-	task *model.Task
-	node string
+type scheduleNode struct {
+	node      *model.WorkNode
+	available *model.ResourceSet
 }
 
+type scheduleRecord struct {
+	task *model.Task
+	node *scheduleNode
+}
+
+// scheduleOneTask 尝试将1个任务调度到某个节点上，若无法调度返回nil
+func scheduleOneTask(svc *APIServer, task *model.Task, nodes []*scheduleNode) *scheduleNode {
+	return nil
+}
+
+// scheduleCycle 实现一个调度周期，返回此次周期内的调度结果
 func scheduleCycle(svc *APIServer) []scheduleRecord {
 	// 使用读锁保护内部数据。在调度过程中实际要修改的是Task的状态，记录它被
 	// 调度到哪个节点，但是这些信息可以先记录到局部变量中，避免长时间持有写锁
@@ -23,6 +33,18 @@ func scheduleCycle(svc *APIServer) []scheduleRecord {
 	if len(queues) == 0 {
 		log.Println("No schedulable job queue found. Stop schedule cycle.")
 		return nil
+	}
+	log.Printf("Run schedule cycle %v...\n", svc.schedCycle)
+
+	// 获取所有可以调度的节点
+	svc.nodes.RLock()
+	defer svc.nodes.RUnlock()
+	scheduleNodes := make([]*scheduleNode, 0, len(svc.nodes.GetNodes()))
+	for _, node := range svc.nodes.GetNodes() {
+		if node.State == model.NodeOnline {
+			n := &scheduleNode{node: node, available: (&node.Available).Clone()}
+			scheduleNodes = append(scheduleNodes, n)
+		}
 	}
 
 	// 使用1个切片保存此次所有成功调度的Task
@@ -53,8 +75,10 @@ func scheduleCycle(svc *APIServer) []scheduleRecord {
 							continue
 						}
 						// 尝试调度task到某个节点上
-
-						scheduleTable = append(scheduleTable, scheduleRecord{task: task, node: ""})
+						target := scheduleOneTask(svc, task, scheduleNodes)
+						if target != nil {
+							scheduleTable = append(scheduleTable, scheduleRecord{task: task, node: target})
+						}
 					}
 				}
 				// 如果没有任何Task被成功调度，跳出此次循环
@@ -79,7 +103,6 @@ func (svc *APIServer) runScheduleCycle() {
 	if flag == 0 {
 		return
 	}
-	log.Printf("Run schedule cycle %v...\n", svc.schedCycle)
 
 	scheduleTable := scheduleCycle(svc)
 	if len(scheduleTable) == 0 {
@@ -91,7 +114,9 @@ func (svc *APIServer) runScheduleCycle() {
 	defer svc.state.Unlock()
 	reschedule := false
 	for _, record := range scheduleTable {
-		if record.job.State == model.JobQueued || record.job.State == model.JobExecuting {
+		jobID, _, _ := model.ParseTaskID(record.task.ID)
+		job := svc.state.GetJob(jobID)
+		if job.State == model.JobQueued || job.State == model.JobExecuting {
 
 		} else {
 			// Job的状态已经发生变化，该Job的所有Task无需调度，所以需要重新执行一次调度

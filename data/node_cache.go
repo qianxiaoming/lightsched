@@ -10,13 +10,15 @@ import (
 // NodeCache 记录了所有节点的信息，以及要分发给节点的Task信息
 type NodeCache struct {
 	sync.RWMutex
-	nodes map[string]*model.WorkNode
+	nodeMap  map[string]*model.WorkNode
+	nodeList []*model.WorkNode
 }
 
 // NewNodeCache 创建新的节点缓存对象
 func NewNodeCache() *NodeCache {
 	cache := &NodeCache{
-		nodes: make(map[string]*model.WorkNode),
+		nodeMap:  make(map[string]*model.WorkNode),
+		nodeList: make([]*model.WorkNode, 0),
 	}
 	node1 := model.NewWorkNode("omen")
 	node1.Address = "192.168.11.101"
@@ -30,7 +32,8 @@ func NewNodeCache() *NodeCache {
 	node1.Resources.GPU.Memory = 11000
 	node1.Resources.GPU.CUDA = 1020
 	node1.Resources.Memory = 32000
-	cache.nodes[node1.Address] = node1
+	cache.nodeMap[node1.Address] = node1
+	cache.nodeList = append(cache.nodeList, node1)
 
 	node2 := model.NewWorkNode("scorpio")
 	node2.Address = "192.168.11.102"
@@ -44,17 +47,12 @@ func NewNodeCache() *NodeCache {
 	node2.Resources.GPU.Memory = 11000
 	node2.Resources.GPU.CUDA = 1020
 	node2.Resources.Memory = 32000
-	cache.nodes[node2.Address] = node2
+	cache.nodeMap[node2.Address] = node2
+	cache.nodeList = append(cache.nodeList, node2)
 	return cache
 }
 
-// GetSchedulableNodes 获取当前可以被调度任务的所有节点
-func (cache *NodeCache) GetSchedulableNodes() []*model.WorkNode {
-	nodes := make([]*model.WorkNode, 0, len(cache.nodes))
-	for _, node := range cache.nodes {
-		if node.State == model.NodeOnline {
-			nodes = append(nodes, node)
-		}
-	}
-	return nodes
+// GetNodes 获取当前记录的所有节点
+func (cache *NodeCache) GetNodes() []*model.WorkNode {
+	return cache.nodeList
 }

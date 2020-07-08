@@ -38,6 +38,22 @@ var DefaultResourceSet *ResourceSet = &ResourceSet{
 	Memory: 1024,
 }
 
+// Clone 深度复制ResourceSet对象
+func (res *ResourceSet) Clone() *ResourceSet {
+	result := &ResourceSet{
+		CPU:    res.CPU,
+		GPU:    res.GPU,
+		Memory: res.Memory,
+	}
+	if res.Others != nil {
+		result.Others = make(map[string]int)
+		for k, v := range res.Others {
+			result.Others[k] = v
+		}
+	}
+	return result
+}
+
 // ResourceSpec 是提交作业时指定的资源信息，资源值可以包含单位
 // 使用string作为指定的值允许用户指定使用资源量的单位
 type ResourceSpec struct {
