@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"log"
 	"sort"
 	"sync/atomic"
@@ -171,6 +172,8 @@ func (svc *APIServer) runScheduleCycle() {
 			record.task.NodeName = record.node.node.Name
 			record.node.node.Available.Consume(record.task.Resources)
 			// 缓存调度结果，以便节点拉取调度到自身的Task
+			msg, _ := json.Marshal(record.task)
+			svc.nodes.AppendNodeMessage(record.node.node.Name, model.MsgScheduleTask, msg)
 		} else {
 			// Job的状态已经发生变化，该Job的所有Task无需调度，所以需要重新执行一次调度
 			reschedule = true

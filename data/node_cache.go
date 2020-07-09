@@ -1,17 +1,30 @@
 package data
 
 import (
+	"crypto/sha1"
 	"sync"
 	"time"
 
 	"github.com/qianxiaoming/lightsched/model"
 )
 
+const (
+	// NodeBucketCount 是保存节点消息的默认Bucket个数
+	NodeBucketCount = 64
+)
+
+// NodeBucket 保存要发给节点的消息。多个节点可能会共享同一个NodeBucket。
+type NodeBucket struct {
+	sync.Mutex
+	Messages map[string][]model.JSONMessage
+}
+
 // NodeCache 记录了所有节点的信息，以及要分发给节点的Task信息
 type NodeCache struct {
 	sync.RWMutex
 	nodeMap  map[string]*model.WorkNode
 	nodeList []*model.WorkNode
+	Buckets  [NodeBucketCount]NodeBucket
 }
 
 // NewNodeCache 创建新的节点缓存对象
@@ -33,8 +46,7 @@ func NewNodeCache() *NodeCache {
 	node1.Resources.GPU.Memory = 8000
 	node1.Resources.GPU.CUDA = 1020
 	node1.Resources.Memory = 32000
-	cache.nodeMap[node1.Address] = node1
-	cache.nodeList = append(cache.nodeList, node1)
+	cache.AddNode(node1)
 
 	node2 := model.NewWorkNode("scorpio")
 	node2.Address = "192.168.11.102"
@@ -49,12 +61,59 @@ func NewNodeCache() *NodeCache {
 	node2.Resources.GPU.Memory = 11000
 	node2.Resources.GPU.CUDA = 1020
 	node2.Resources.Memory = 32000
-	cache.nodeMap[node2.Address] = node2
-	cache.nodeList = append(cache.nodeList, node2)
+	cache.AddNode(node2)
+
+	node3 := model.NewWorkNode("antares")
+	node3.Address = "192.168.11.103"
+	node3.Port = 20519
+	node3.State = model.NodeOnline
+	node3.Online = time.Now()
+	node3.Resources.CPU.Cores = 16
+	node3.Resources.CPU.Frequency = 16 * 3700
+	node3.Resources.CPU.MinFreq = 3700
+	node3.Resources.Memory = 64000
+	cache.AddNode(node3)
 	return cache
 }
 
 // GetNodes 获取当前记录的所有节点
 func (cache *NodeCache) GetNodes() []*model.WorkNode {
 	return cache.nodeList
+}
+
+// AddNode 加入新的节点
+func (cache *NodeCache) AddNode(node *model.WorkNode) {
+	cache.nodeMap[node.Address] = node
+	cache.nodeList = append(cache.nodeList, node)
+
+	index := int(sha1.Sum([]byte(node.Name))[0]) % NodeBucketCount
+	cache.Buckets[index].Lock()
+	defer cache.Buckets[index].Unlock()
+	if cache.Buckets[index].Messages == nil {
+		cache.Buckets[index].Messages = make(map[string][]model.JSONMessage)
+	}
+	cache.Buckets[index].Messages[node.Name] = make([]model.JSONMessage, 0, 8)
+}
+
+// AppendNodeMessage 给指定的节点增加一个消息
+func (cache *NodeCache) AppendNodeMessage(name string, kind string, json []byte) {
+	index := int(sha1.Sum([]byte(name))[0]) % NodeBucketCount
+	cache.Buckets[index].Lock()
+	defer cache.Buckets[index].Unlock()
+	msgs := cache.Buckets[index].Messages[name]
+	cache.Buckets[index].Messages[name] = append(msgs,
+		model.JSONMessage{
+			Kind: kind,
+			JSON: json,
+		})
+}
+
+// TakeNodeMessage 获取指定节点的消息，然后清空它的消息列表
+func (cache *NodeCache) TakeNodeMessage(name string) []model.JSONMessage {
+	index := int(sha1.Sum([]byte(name))[0]) % NodeBucketCount
+	cache.Buckets[index].Lock()
+	defer cache.Buckets[index].Unlock()
+	msgs := cache.Buckets[index].Messages[name]
+	cache.Buckets[index].Messages[name] = make([]model.JSONMessage, 0, 8)
+	return msgs
 }
