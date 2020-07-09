@@ -47,7 +47,7 @@ type APIServer struct {
 
 // NewAPIServer 用以创建和初始化API Server实例
 func NewAPIServer() *APIServer {
-	schedLog := false
+	schedLog := true // false
 	if os.Getenv("LS_SCHEDULE_LOG") == "YES" {
 		schedLog = true
 	}

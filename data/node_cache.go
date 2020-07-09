@@ -27,9 +27,10 @@ func NewNodeCache() *NodeCache {
 	node1.Online = time.Now()
 	node1.Resources.CPU.Cores = 24
 	node1.Resources.CPU.Frequency = 24 * 3000
+	node1.Resources.CPU.MinFreq = 3000
 	node1.Resources.GPU.Cards = 4
 	node1.Resources.GPU.Cores = 2048
-	node1.Resources.GPU.Memory = 11000
+	node1.Resources.GPU.Memory = 8000
 	node1.Resources.GPU.CUDA = 1020
 	node1.Resources.Memory = 32000
 	cache.nodeMap[node1.Address] = node1
@@ -40,10 +41,11 @@ func NewNodeCache() *NodeCache {
 	node2.Port = 20519
 	node2.State = model.NodeOnline
 	node2.Online = time.Now()
-	node2.Resources.CPU.Cores = 24
-	node2.Resources.CPU.Frequency = 24 * 3000
+	node2.Resources.CPU.Cores = 16
+	node2.Resources.CPU.Frequency = 16 * 2400
+	node2.Resources.CPU.MinFreq = 2400
 	node2.Resources.GPU.Cards = 4
-	node2.Resources.GPU.Cores = 2048
+	node2.Resources.GPU.Cores = 4096
 	node2.Resources.GPU.Memory = 11000
 	node2.Resources.GPU.CUDA = 1020
 	node2.Resources.Memory = 32000

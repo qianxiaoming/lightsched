@@ -37,29 +37,40 @@ func scheduleOneTask(svc *APIServer, task *model.Task, nodes []*scheduleNode) *s
 	for _, node := range nodes {
 		node.score = 0.0
 		if ok, res, need, offered := task.Resources.SatisfiedWith(node.available); ok {
-			node.score = 1.0
+			// 计算CPU和内存得分
+			if task.Resources.CPU.Cores > 0 {
+				node.score = (node.available.CPU.Cores / node.node.Resources.CPU.Cores) * 3.0
+			} else {
+				node.score = (float32(node.available.CPU.Frequency) / float32(node.node.Resources.CPU.Frequency)) * 3.0
+			}
+			node.score = node.score * float32(node.node.Resources.CPU.MinFreq) / 2400.0
+			node.score = node.score + float32(node.available.Memory)/float32(node.node.Resources.Memory)
+			if task.Resources.GPU.Cards > 0 {
+				// 计算GPU得分
+				gpuScore := (float32(node.available.GPU.Cards) / float32(node.node.Resources.GPU.Cards)) * 5.0
+				gpuScore = gpuScore * float32(node.node.Resources.GPU.Memory) / 8.0
+				gpuScore = gpuScore * float32(node.node.Resources.GPU.Cores) / 3000.0
+				node.score += gpuScore
+			}
+			// 记录当前得分最高的节点
 			if maxScore < node.score {
 				maxScore = node.score
 				target = node
 			}
 		} else {
 			if svc.schedLog {
-				log.Printf("  Schedule task %s failed with %s: %s need %v but %v offered", task.ID, node.node.Name, res, need, offered)
+				log.Printf("  Task %s is failed scheduled to %s: %s need %v but %v offered", task.ID, node.node.Name, res, need, offered)
 			}
 		}
 	}
 	if target != nil && svc.schedLog {
-		log.Printf("  Schedule task %s to node %s with score %f", task.ID, target.node.Name, maxScore)
+		log.Printf("  Task %s is scheduled to %s with score %f", task.ID, target.node.Name, maxScore)
 	}
 	return target
 }
 
 // scheduleCycle 实现一个调度周期，返回此次周期内的调度结果
 func scheduleCycle(svc *APIServer) []scheduleRecord {
-	// 使用读锁保护内部数据。在调度过程中实际要修改的是Task的状态，记录它被
-	// 调度到哪个节点，但是这些信息可以先记录到局部变量中，避免长时间持有写锁
-	svc.state.RLock()
-	defer svc.state.RUnlock()
 	// 获取所有可以调度的JobQueue，按照优先级排序
 	queues := svc.state.GetSchedulableQueues()
 	if len(queues) == 0 {
@@ -69,14 +80,16 @@ func scheduleCycle(svc *APIServer) []scheduleRecord {
 	log.Printf("Run schedule cycle %v...\n", svc.schedCycle)
 
 	// 获取所有可以调度的节点
-	svc.nodes.RLock()
-	defer svc.nodes.RUnlock()
 	scheduleNodes := make([]*scheduleNode, 0, len(svc.nodes.GetNodes()))
 	for _, node := range svc.nodes.GetNodes() {
 		if node.State == model.NodeOnline {
 			n := &scheduleNode{node: node, available: (&node.Available).Clone()}
 			scheduleNodes = append(scheduleNodes, n)
 		}
+	}
+	if len(scheduleNodes) == 0 {
+		log.Println("No schedulable node found. Stop schedule cycle.")
+		return nil
 	}
 
 	// 使用1个切片保存此次所有成功调度的Task
@@ -108,6 +121,8 @@ func scheduleCycle(svc *APIServer) []scheduleRecord {
 						target := scheduleOneTask(svc, task, scheduleNodes)
 						if target != nil {
 							scheduleTable = append(scheduleTable, scheduleRecord{task: task, node: target})
+							// 从节点的可用资源中减去Task所需的资源
+							target.available.Consume(task.Resources)
 						}
 					}
 				}
@@ -134,20 +149,28 @@ func (svc *APIServer) runScheduleCycle() {
 		return
 	}
 
+	svc.state.Lock()
+	defer svc.state.Unlock()
+
+	svc.nodes.Lock()
+	defer svc.nodes.Unlock()
+
+	// 执行调度，获得调度结果表
 	scheduleTable := scheduleCycle(svc)
 	if len(scheduleTable) == 0 {
 		return
 	}
 
-	// 修改被调度的Task状态。此时使用写锁保护，但要注意Job或Task数据可能已经被修改
-	svc.state.Lock()
-	defer svc.state.Unlock()
+	// 修改被调度的Task状态
 	reschedule := false
 	for _, record := range scheduleTable {
 		jobID, _, _ := model.ParseTaskID(record.task.ID)
 		job := svc.state.GetJob(jobID)
 		if job.State == model.JobQueued || job.State == model.JobExecuting {
-
+			record.task.State = model.TaskScheduled
+			record.task.NodeName = record.node.node.Name
+			record.node.node.Available.Consume(record.task.Resources)
+			// 缓存调度结果，以便节点拉取调度到自身的Task
 		} else {
 			// Job的状态已经发生变化，该Job的所有Task无需调度，所以需要重新执行一次调度
 			reschedule = true

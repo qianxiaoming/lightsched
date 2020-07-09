@@ -90,6 +90,19 @@ func (res *ResourceSet) SatisfiedWith(other *ResourceSet) (bool, string, interfa
 	return true, "", nil, nil
 }
 
+// Consume 消耗指定的资源
+func (res *ResourceSet) Consume(other *ResourceSet) {
+	res.CPU.Cores = res.CPU.Cores - other.CPU.Cores
+	res.CPU.Frequency = res.CPU.Frequency - other.CPU.Frequency
+	res.Memory = res.Memory - other.Memory
+	res.GPU.Cards = res.GPU.Cards - other.GPU.Cards
+	for k, v := range res.Others {
+		if vo, ok := other.Others[k]; ok {
+			res.Others[k] = v - vo
+		}
+	}
+}
+
 // ResourceSpec 是提交作业时指定的资源信息，资源值可以包含单位
 // 使用string作为指定的值允许用户指定使用资源量的单位
 type ResourceSpec struct {
