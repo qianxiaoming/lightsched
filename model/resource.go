@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"log"
 	"strconv"
 	"strings"
@@ -52,6 +53,41 @@ func (res *ResourceSet) Clone() *ResourceSet {
 		}
 	}
 	return result
+}
+
+// SatisfiedWith 判断指定的资源集能否满足自身需求
+func (res *ResourceSet) SatisfiedWith(other *ResourceSet) (bool, string, interface{}, interface{}) {
+	if res.GPU.Cards > 0 {
+		if res.GPU.Cards > other.GPU.Cards {
+			return false, "GPU", res.GPU.Cards, other.GPU.Cards
+		}
+		if res.GPU.CUDA > other.GPU.CUDA {
+			return false, "CUDA Version", float32(res.GPU.CUDA) / float32(100.0), float32(other.GPU.CUDA) / float32(100.0)
+		}
+		if res.GPU.Memory > other.GPU.Memory {
+			return false, "GPU Memory", fmt.Sprintf("%dMi", res.GPU.Memory), fmt.Sprintf("%dMi", other.GPU.Memory)
+		}
+	}
+	if res.CPU.MinFreq > 0 && res.CPU.MinFreq > other.CPU.MinFreq {
+		return false, "CPU Minimum Frequency", fmt.Sprintf("%dMHz", res.CPU.MinFreq), fmt.Sprintf("%dMHz", other.CPU.MinFreq)
+	}
+	if res.CPU.Cores > 0 && res.CPU.Cores > other.CPU.Cores {
+		return false, "CPU Cores", res.CPU.Cores, other.CPU.Cores
+	}
+	if res.CPU.Frequency > 0 && res.CPU.Frequency > other.CPU.Frequency {
+		return false, "CPU Frequency", fmt.Sprintf("%dMHz", res.CPU.Frequency), fmt.Sprintf("%dMHz", other.CPU.Frequency)
+	}
+	if res.Memory > 0 && res.Memory > other.Memory {
+		return false, "Memory", fmt.Sprintf("%fGi", float32(res.Memory)/float32(1000.0)), fmt.Sprintf("%fGi", float32(other.Memory)/float32(1000.0))
+	}
+	for k, v := range res.Others {
+		if ov, ok := other.Others[k]; !ok {
+			return false, k, v, 0
+		} else if v > ov {
+			return false, k, v, ov
+		}
+	}
+	return true, "", nil, nil
 }
 
 // ResourceSpec 是提交作业时指定的资源信息，资源值可以包含单位

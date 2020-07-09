@@ -2,24 +2,56 @@ package server
 
 import (
 	"log"
+	"sort"
 	"sync/atomic"
 
 	"github.com/qianxiaoming/lightsched/model"
 )
 
+// scheduleRecord 表示可调度的节点
 type scheduleNode struct {
 	node      *model.WorkNode
 	available *model.ResourceSet
+	score     float32
 }
 
+// scheduleRecord 记录了1个调度结果，即哪个任务调度到哪个节点
 type scheduleRecord struct {
 	task *model.Task
 	node *scheduleNode
 }
 
+// 定义该类用以排序计算任务：总是把GPU任务放在前面
+type taskSlice []*model.Task
+
+// sort包要求的排序接口实现
+func (p taskSlice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+func (p taskSlice) Len() int           { return len(p) }
+func (p taskSlice) Less(i, j int) bool { return p[i].Resources.GPU.Cards >= p[j].Resources.GPU.Cards }
+
 // scheduleOneTask 尝试将1个任务调度到某个节点上，若无法调度返回nil
 func scheduleOneTask(svc *APIServer, task *model.Task, nodes []*scheduleNode) *scheduleNode {
-	return nil
+	var target *scheduleNode = nil
+	var maxScore float32 = 0.0
+	// 遍历节点列表计算Task在该节点上的得分
+	for _, node := range nodes {
+		node.score = 0.0
+		if ok, res, need, offered := task.Resources.SatisfiedWith(node.available); ok {
+			node.score = 1.0
+			if maxScore < node.score {
+				maxScore = node.score
+				target = node
+			}
+		} else {
+			if svc.schedLog {
+				log.Printf("  Schedule task %s failed with %s: %s need %v but %v offered", task.ID, node.node.Name, res, need, offered)
+			}
+		}
+	}
+	if target != nil && svc.schedLog {
+		log.Printf("  Schedule task %s to node %s with score %f", task.ID, target.node.Name, maxScore)
+	}
+	return target
 }
 
 // scheduleCycle 实现一个调度周期，返回此次周期内的调度结果
@@ -63,17 +95,15 @@ func scheduleCycle(svc *APIServer) []scheduleRecord {
 			// 公平调度优先级为maxPriority的多个Job。首先获取它们各自可以调度的Task，然后
 			// 使用无限循环反复调度，直到没有Task可以调度为止（可能是所有Task都被调度，也可
 			// 能是没有节点可以接受任何Task）
-			jobTasks := make([][]*model.Task, len(jobs[maxPriority]))
+			jobTasks := make([]taskSlice, len(jobs[maxPriority]))
 			for i, job := range jobs[maxPriority] {
 				jobTasks[i] = job.GetSchedulableTasks()
+				sort.Sort(jobTasks[i])
 			}
 			for {
 				count := len(scheduleTable)
 				for i := 0; i < len(jobTasks); i++ {
 					for _, task := range jobTasks[i] {
-						if task.State != model.TaskQueued {
-							continue
-						}
 						// 尝试调度task到某个节点上
 						target := scheduleOneTask(svc, task, scheduleNodes)
 						if target != nil {
