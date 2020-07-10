@@ -43,9 +43,10 @@ func NewNodeCache() *NodeCache {
 	node1.Resources.CPU.MinFreq = 3000
 	node1.Resources.GPU.Cards = 4
 	node1.Resources.GPU.Cores = 2048
-	node1.Resources.GPU.Memory = 8000
+	node1.Resources.GPU.Memory = 8
 	node1.Resources.GPU.CUDA = 1020
 	node1.Resources.Memory = 32000
+	node1.Available = node1.Resources
 	cache.AddNode(node1)
 
 	node2 := model.NewWorkNode("scorpio")
@@ -58,9 +59,10 @@ func NewNodeCache() *NodeCache {
 	node2.Resources.CPU.MinFreq = 2400
 	node2.Resources.GPU.Cards = 4
 	node2.Resources.GPU.Cores = 4096
-	node2.Resources.GPU.Memory = 11000
+	node2.Resources.GPU.Memory = 11
 	node2.Resources.GPU.CUDA = 1020
 	node2.Resources.Memory = 32000
+	node2.Available = node2.Resources
 	cache.AddNode(node2)
 
 	node3 := model.NewWorkNode("antares")
@@ -72,6 +74,7 @@ func NewNodeCache() *NodeCache {
 	node3.Resources.CPU.Frequency = 16 * 3700
 	node3.Resources.CPU.MinFreq = 3700
 	node3.Resources.Memory = 64000
+	node3.Available = node3.Resources
 	cache.AddNode(node3)
 	return cache
 }

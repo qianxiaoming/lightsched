@@ -50,6 +50,7 @@ type Task struct {
 	Args       string            `json:"args,omitempty"`
 	WorkDir    string            `json:"workdir,omitempty"`
 	Labels     map[string]string `json:"labels,omitempty"`
+	Taints     map[string]string `json:"taints,omitempty"`
 	Resources  *ResourceSet      `json:"resources,omitempty"`
 	State      TaskState         `json:"state"`
 	NodeName   string            `json:"node,omitempty"`

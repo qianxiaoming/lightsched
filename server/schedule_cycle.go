@@ -18,8 +18,8 @@ type scheduleNode struct {
 
 // scheduleRecord 记录了1个调度结果，即哪个任务调度到哪个节点
 type scheduleRecord struct {
-	task *model.Task
-	node *scheduleNode
+	task   *model.Task
+	target *scheduleNode
 }
 
 // 定义该类用以排序计算任务：总是把GPU任务放在前面
@@ -36,6 +36,36 @@ func scheduleOneTask(svc *APIServer, task *model.Task, nodes []*scheduleNode) *s
 	var maxScore float32 = 0.0
 	// 遍历节点列表计算Task在该节点上的得分
 	for _, node := range nodes {
+		// 检查label和taints是否符合
+		passed := true
+		for k, v := range task.Labels {
+			nv, ok := node.node.Labels[k]
+			if !ok || nv != v {
+				passed = false
+				if svc.schedLog {
+					log.Printf("  Task %s is failed scheduled to %s because of label %s", task.ID, node.node.Name, k)
+				}
+				break
+			}
+		}
+		if !passed {
+			continue
+		}
+		passed = true
+		for k, v := range task.Taints {
+			nv, ok := node.node.Taints[k]
+			if ok && nv == v {
+				passed = false
+				if svc.schedLog {
+					log.Printf("  Task %s is failed scheduled to %s because of taints %s", task.ID, node.node.Name, k)
+				}
+				break
+			}
+		}
+		if !passed {
+			continue
+		}
+		// 检查资源是否符合并算分
 		node.score = 0.0
 		if ok, res, need, offered := task.Resources.SatisfiedWith(node.available); ok {
 			// 计算CPU和内存得分
@@ -78,7 +108,6 @@ func scheduleCycle(svc *APIServer) []scheduleRecord {
 		log.Println("No schedulable job queue found. Stop schedule cycle.")
 		return nil
 	}
-	log.Printf("Run schedule cycle %v...\n", svc.schedCycle)
 
 	// 获取所有可以调度的节点
 	scheduleNodes := make([]*scheduleNode, 0, len(svc.nodes.GetNodes()))
@@ -98,7 +127,7 @@ func scheduleCycle(svc *APIServer) []scheduleRecord {
 	for _, curQueue := range queues {
 		// 获取所有可以调度的Job，按照优先级、时间和初次调度周期排序
 		jobs := curQueue.GetSchedulableJobs()
-		for {
+		for len(jobs) > 0 {
 			// 确定当前可调度Job的最高优先级
 			maxPriority := 0
 			for p := range jobs {
@@ -114,29 +143,19 @@ func scheduleCycle(svc *APIServer) []scheduleRecord {
 				jobTasks[i] = job.GetSchedulableTasks()
 				sort.Sort(jobTasks[i])
 			}
-			for {
-				count := len(scheduleTable)
-				for i := 0; i < len(jobTasks); i++ {
-					for _, task := range jobTasks[i] {
-						// 尝试调度task到某个节点上
-						target := scheduleOneTask(svc, task, scheduleNodes)
-						if target != nil {
-							scheduleTable = append(scheduleTable, scheduleRecord{task: task, node: target})
-							// 从节点的可用资源中减去Task所需的资源
-							target.available.Consume(task.Resources)
-						}
+			for i := 0; i < len(jobTasks); i++ {
+				for _, task := range jobTasks[i] {
+					// 尝试调度task到某个节点上
+					target := scheduleOneTask(svc, task, scheduleNodes)
+					if target != nil {
+						scheduleTable = append(scheduleTable, scheduleRecord{task: task, target: target})
+						// 从节点的可用资源中减去Task所需的资源
+						target.available.Consume(task.Resources)
 					}
-				}
-				// 如果没有任何Task被成功调度，跳出此次循环
-				if count == len(scheduleTable) {
-					break
 				}
 			}
 			// 当前最高优先级的Job都已经无法调度。移除它们后进入下一次循环。
 			delete(jobs, maxPriority)
-			if len(jobs) == 0 {
-				break
-			}
 		}
 	}
 	return scheduleTable
@@ -157,29 +176,21 @@ func (svc *APIServer) runScheduleCycle() {
 	defer svc.nodes.Unlock()
 
 	// 执行调度，获得调度结果表
+	log.Printf("Run schedule cycle %d\n", svc.schedCycle)
 	scheduleTable := scheduleCycle(svc)
 	if len(scheduleTable) == 0 {
 		return
 	}
+	log.Printf("There are %d task(s) are scheduled in this cycle", len(scheduleTable))
 
 	// 修改被调度的Task状态
-	reschedule := false
 	for _, record := range scheduleTable {
-		jobID, _, _ := model.ParseTaskID(record.task.ID)
-		job := svc.state.GetJob(jobID)
-		if job.State == model.JobQueued || job.State == model.JobExecuting {
-			record.task.State = model.TaskScheduled
-			record.task.NodeName = record.node.node.Name
-			record.node.node.Available.Consume(record.task.Resources)
-			// 缓存调度结果，以便节点拉取调度到自身的Task
-			msg, _ := json.Marshal(record.task)
-			svc.nodes.AppendNodeMessage(record.node.node.Name, model.MsgScheduleTask, msg)
-		} else {
-			// Job的状态已经发生变化，该Job的所有Task无需调度，所以需要重新执行一次调度
-			reschedule = true
-		}
+		record.task.State = model.TaskScheduled
+		record.task.NodeName = record.target.node.Name
+		record.target.node.Available.Consume(record.task.Resources)
+		// 缓存调度结果，以便节点拉取调度到自身的Task
+		msg, _ := json.Marshal(record.task)
+		svc.nodes.AppendNodeMessage(record.target.node.Name, model.MsgScheduleTask, msg)
 	}
-	if reschedule {
-		svc.setScheduleFlag()
-	}
+	log.Println("Schedule cycle done")
 }

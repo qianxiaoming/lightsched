@@ -65,7 +65,7 @@ func (res *ResourceSet) SatisfiedWith(other *ResourceSet) (bool, string, interfa
 			return false, "CUDA Version", float32(res.GPU.CUDA) / float32(100.0), float32(other.GPU.CUDA) / float32(100.0)
 		}
 		if res.GPU.Memory > other.GPU.Memory {
-			return false, "GPU Memory", fmt.Sprintf("%dMi", res.GPU.Memory), fmt.Sprintf("%dMi", other.GPU.Memory)
+			return false, "GPU Memory", fmt.Sprintf("%dGi", res.GPU.Memory), fmt.Sprintf("%dGi", other.GPU.Memory)
 		}
 	}
 	if res.CPU.MinFreq > 0 && res.CPU.MinFreq > other.CPU.MinFreq {
@@ -156,8 +156,8 @@ func NewResourceSetWithSpec(spec *ResourceSpec) *ResourceSet {
 			res.GPU.Cores = cores
 		} else if strings.Compare(k, "memory") == 0 {
 			v, u := util.ParseValueAndUnit(v)
-			if strings.Compare(u, "gi") == 0 {
-				v = v * 1000
+			if strings.Compare(u, "mi") == 0 {
+				v = v / 1000
 			}
 			res.GPU.Memory = int(v)
 		} else if strings.Compare(k, "cuda") == 0 {
