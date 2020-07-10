@@ -43,7 +43,7 @@ func scheduleOneTask(svc *APIServer, task *model.Task, nodes []*scheduleNode) *s
 			if !ok || nv != v {
 				passed = false
 				if svc.schedLog {
-					log.Printf("  Task %s is failed scheduled to %s because of label %s", task.ID, node.node.Name, k)
+					log.Printf("  Task %s failed scheduling to %s because of label %s", task.ID, node.node.Name, k)
 				}
 				break
 			}
@@ -57,7 +57,7 @@ func scheduleOneTask(svc *APIServer, task *model.Task, nodes []*scheduleNode) *s
 			if ok && nv == v {
 				passed = false
 				if svc.schedLog {
-					log.Printf("  Task %s is failed scheduled to %s because of taints %s", task.ID, node.node.Name, k)
+					log.Printf("  Task %s failed scheduling to %s because of taints %s", task.ID, node.node.Name, k)
 				}
 				break
 			}
@@ -90,7 +90,7 @@ func scheduleOneTask(svc *APIServer, task *model.Task, nodes []*scheduleNode) *s
 			}
 		} else {
 			if svc.schedLog {
-				log.Printf("  Task %s is failed scheduled to %s: %s need %v but %v offered", task.ID, node.node.Name, res, need, offered)
+				log.Printf("  Task %s failed scheduling to %s: %s need %v but %v offered", task.ID, node.node.Name, res, need, offered)
 			}
 		}
 	}
@@ -163,11 +163,11 @@ func scheduleCycle(svc *APIServer) []scheduleRecord {
 
 func (svc *APIServer) runScheduleCycle() {
 	// 检查调度标志是否被设置
-	svc.schedCycle = svc.schedCycle + 1
 	flag := atomic.SwapInt32(&svc.schedFlag, 0)
 	if flag == 0 {
 		return
 	}
+	svc.schedCycle = svc.schedCycle + 1
 
 	svc.state.Lock()
 	defer svc.state.Unlock()
@@ -179,9 +179,10 @@ func (svc *APIServer) runScheduleCycle() {
 	log.Printf("Run schedule cycle %d\n", svc.schedCycle)
 	scheduleTable := scheduleCycle(svc)
 	if len(scheduleTable) == 0 {
+		log.Println("There is no task scheduled in this cycle")
 		return
 	}
-	log.Printf("There are %d task(s) are scheduled in this cycle", len(scheduleTable))
+	log.Printf("There are %d task(s) scheduled in this cycle", len(scheduleTable))
 
 	// 修改被调度的Task状态
 	for _, record := range scheduleTable {

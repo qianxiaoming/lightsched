@@ -78,7 +78,7 @@ func (res *ResourceSet) SatisfiedWith(other *ResourceSet) (bool, string, interfa
 		return false, "CPU Frequency", fmt.Sprintf("%dMHz", res.CPU.Frequency), fmt.Sprintf("%dMHz", other.CPU.Frequency)
 	}
 	if res.Memory > 0 && res.Memory > other.Memory {
-		return false, "Memory", fmt.Sprintf("%fGi", float32(res.Memory)/float32(1000.0)), fmt.Sprintf("%fGi", float32(other.Memory)/float32(1000.0))
+		return false, "Memory", fmt.Sprintf("%dGi", res.Memory/1000), fmt.Sprintf("%dGi", other.Memory/1000)
 	}
 	for k, v := range res.Others {
 		if ov, ok := other.Others[k]; !ok {
@@ -93,6 +93,11 @@ func (res *ResourceSet) SatisfiedWith(other *ResourceSet) (bool, string, interfa
 // Consume 消耗指定的资源
 func (res *ResourceSet) Consume(other *ResourceSet) {
 	res.CPU.Cores = res.CPU.Cores - other.CPU.Cores
+	if res.CPU.Cores < 0.001 {
+		res.CPU.Cores = 0.0
+	} else {
+		res.CPU.Cores = float32(int32(res.CPU.Cores*1000)) / 1000.0
+	}
 	res.CPU.Frequency = res.CPU.Frequency - other.CPU.Frequency
 	res.Memory = res.Memory - other.Memory
 	res.GPU.Cards = res.GPU.Cards - other.GPU.Cards
