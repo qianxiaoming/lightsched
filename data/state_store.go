@@ -180,3 +180,15 @@ func (m *StateStore) AddJob(job *model.Job) error {
 	log.Printf("Job \"%s\"(%s) with %d task(s) has beed added to queue \"%s\"", job.Name, job.ID, job.CountTasks(), job.Queue)
 	return nil
 }
+
+func (m *StateStore) UpdateTasks(tasks []*model.Task) error {
+	count := len(tasks)
+	index := 0
+	p := &index
+	m.boltDB.putBatchJSON("task", func() (bool, string, interface{}) {
+		eof := *p == (count - 1)
+		*p = *p + 1
+		return eof, tasks[*p-1].ID, tasks[*p-1]
+	})
+	return nil
+}

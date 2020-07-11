@@ -41,6 +41,26 @@ func (db *BoltDB) putJSON(bucket string, key string, value interface{}) ([]byte,
 	return nil, err
 }
 
+func (db *BoltDB) putBatchJSON(bucket string, batch func() (bool, string, interface{})) error {
+	err := db.Batch(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(bucket))
+		for {
+			eof, key, obj := batch()
+			if json, err := json.Marshal(obj); err == nil {
+				err = b.Put([]byte(key), json)
+				if err != nil {
+					return err
+				}
+			}
+			if eof {
+				break
+			}
+		}
+		return nil
+	})
+	return err
+}
+
 func (db *BoltDB) getJSON(bucket string, key string, value interface{}) (bool, error) {
 	err := db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bucket))

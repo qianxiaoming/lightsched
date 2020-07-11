@@ -185,6 +185,7 @@ func (svc *APIServer) runScheduleCycle() {
 	log.Printf("There are %d task(s) scheduled in this cycle", len(scheduleTable))
 
 	// 修改被调度的Task状态
+	updates := make([]*model.Task, 0, len(scheduleTable))
 	for _, record := range scheduleTable {
 		record.task.State = model.TaskScheduled
 		record.task.NodeName = record.target.node.Name
@@ -192,6 +193,13 @@ func (svc *APIServer) runScheduleCycle() {
 		// 缓存调度结果，以便节点拉取调度到自身的Task
 		msg, _ := json.Marshal(record.task)
 		svc.nodes.AppendNodeMessage(record.target.node.Name, model.MsgScheduleTask, msg)
+
+		updates = append(updates, record.task)
 	}
+	// 更新数据库中Task的状态
+	if err := svc.state.UpdateTasks(updates); err != nil {
+		log.Printf("Unable to save tasks into database: %v", err)
+	}
+
 	log.Println("Schedule cycle done")
 }
