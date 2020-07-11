@@ -14,12 +14,20 @@ const (
 	NodeUnknown
 )
 
+// Platform 包含操作系统相关的信息
+type PlatformInfo struct {
+	Kind    string
+	Name    string
+	Family  string
+	Version string
+}
+
 // WorkNode 代表实际执行计算任务的节点
 type WorkNode struct {
 	Name      string            `json:"name"`
 	Address   string            `json:"address"`
 	Port      int               `json:"port"`
-	OS        string            `json:"os"`
+	Platform  PlatformInfo      `json:"platform"`
 	State     NodeState         `json:"state"`
 	Online    time.Time         `json:"online"`
 	Labels    map[string]string `json:"labels,omitempty"`

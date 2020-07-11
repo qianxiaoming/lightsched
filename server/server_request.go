@@ -5,7 +5,7 @@ import (
 	"log"
 	"path/filepath"
 
-	"github.com/qianxiaoming/lightsched/data"
+	"github.com/qianxiaoming/lightsched/constant"
 	"github.com/qianxiaoming/lightsched/model"
 	"github.com/qianxiaoming/lightsched/util"
 	uuid "github.com/satori/go.uuid"
@@ -17,7 +17,7 @@ func (svc *APIServer) requestCreateJob(spec *model.JobSpec) error {
 		spec.ID = uuid.NewV4().String()
 	}
 	if len(spec.Queue) == 0 {
-		spec.Queue = data.DefaultQueueName
+		spec.Queue = constant.DefaultQueueName
 	}
 
 	// 创建Job对象并生成TaskGroup及Task对象，保存到服务状态数据中

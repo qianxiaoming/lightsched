@@ -7,13 +7,16 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/qianxiaoming/lightsched/constant"
 	"github.com/qianxiaoming/lightsched/data"
+	"github.com/qianxiaoming/lightsched/util"
 )
 
 // Config 是API Server的配置信息
@@ -48,16 +51,18 @@ type APIServer struct {
 // NewAPIServer 用以创建和初始化API Server实例
 func NewAPIServer() *APIServer {
 	schedLog := true // false
-	if os.Getenv("LS_SCHEDULE_LOG") == "YES" {
+	if os.Getenv("LIGHTSCHED_SCHEDULE_LOG") == "YES" {
 		schedLog = true
 	}
+	dataPath, _ := filepath.Abs("cluster")
+	logPath, _ := filepath.Abs("log")
 	return &APIServer{
 		config: Config{
 			address:  "",
-			restPort: 20516,
-			nodePort: 20517,
-			dataPath: "./cluster",
-			logPath:  "./log",
+			restPort: constant.DefaultRestPort,
+			nodePort: constant.DefaultNodePort,
+			dataPath: dataPath,
+			logPath:  logPath,
 		},
 		state:         data.NewStateStore(),
 		nodes:         data.NewNodeCache(),
@@ -79,11 +84,6 @@ func (svc *APIServer) Run() int {
 	defer svc.state.ClearState()
 
 	var wg sync.WaitGroup
-	waitForStop := func(wait func()) {
-		wg.Add(1)
-		defer wg.Done()
-		wait()
-	}
 
 	// gin.SetMode(gin.ReleaseMode)
 	// 启动对内节点的HTTP服务
@@ -96,7 +96,7 @@ func (svc *APIServer) Run() int {
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
-	go waitForStop(func() {
+	go util.WaitForStop(&wg, func() {
 		log.Printf("Start Node HTTP Service on %v\n", httpNode.Addr)
 		if err := httpNode.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Cannot listen on %s:%d: %s\n", svc.config.address, svc.config.nodePort, err)
@@ -113,7 +113,7 @@ func (svc *APIServer) Run() int {
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
-	go waitForStop(func() {
+	go util.WaitForStop(&wg, func() {
 		log.Printf("Start RESTful API Service on %v\n", httpRest.Addr)
 		if err := httpRest.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Cannot listen on %s:%d: %s\n", svc.config.address, svc.config.restPort, err)

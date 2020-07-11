@@ -9,16 +9,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/qianxiaoming/lightsched/constant"
 	"github.com/qianxiaoming/lightsched/model"
 	"github.com/qianxiaoming/lightsched/util"
 	bolt "go.etcd.io/bbolt"
-)
-
-const (
-	// DatabaseFileName 是系统默认主数据库的名字
-	DatabaseFileName = "lightsched.db"
-	// DefaultQueueName 是默认作业队列的名字
-	DefaultQueueName = "default"
 )
 
 var (
@@ -50,7 +44,7 @@ func NewStateStore() *StateStore {
 }
 
 func (m *StateStore) InitState(path string) error {
-	m.dbPath = filepath.Join(util.GetCurrentPath(), path, DatabaseFileName)
+	m.dbPath = filepath.Join(util.GetCurrentPath(), path, constant.DatabaseFileName)
 	if !util.PathExists(m.dbPath) {
 		if err := createDatabaseFile(m.dbPath); err != nil {
 			return err
@@ -90,7 +84,7 @@ func createDatabaseFile(dbfile string) error {
 		}
 	}
 	// 创建默认作业队列
-	if _, err := boltDB.putJSON("queue", DefaultQueueName, model.JobQueueSpec{Name: "default", Enabled: true, Priority: 1000}); err != nil {
+	if _, err := boltDB.putJSON("queue", constant.DefaultQueueName, model.JobQueueSpec{Name: "default", Enabled: true, Priority: 1000}); err != nil {
 		return err
 	}
 
