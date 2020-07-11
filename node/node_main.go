@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -20,6 +22,7 @@ import (
 // Config 是Node Server的配置信息
 type Config struct {
 	apiserver string
+	hostname  string
 	heartbeat time.Duration
 	logPath   string
 }
@@ -29,19 +32,28 @@ type NodeServer struct {
 	config    Config
 	resources model.ResourceSet
 	platform  model.PlatformInfo
+	labels    map[string]string
 	state     model.NodeState
 	update    chan interface{}
 }
 
 // NewNodeServer 创建1个NodeServer实例
-func NewNodeServer(apiserver string) *NodeServer {
+func NewNodeServer(apiserver string, hostname string) *NodeServer {
 	if len(apiserver) == 0 {
 		apiserver = os.Getenv("LIGHTSCHED_APISERVER_ADDR")
+	}
+	if len(hostname) == 0 {
+		var err error
+		if hostname, err = os.Hostname(); err != nil {
+			log.Printf("Cannot get the host name of this machine: %v", err)
+			return nil
+		}
 	}
 	logPath, _ := filepath.Abs("log")
 	return &NodeServer{
 		config: Config{
 			apiserver: apiserver,
+			hostname:  hostname,
 			heartbeat: time.Second * 2,
 			logPath:   logPath,
 		},
@@ -50,14 +62,27 @@ func NewNodeServer(apiserver string) *NodeServer {
 }
 
 // Run 是Node Server的主运行逻辑，返回时服务即结束运行
-func (node *NodeServer) Run() int {
+func (node *NodeServer) Run(cpustr string, gpustr string, memorystr string, labelstr string) int {
 	log.Println("Light Scheduler Node Server is starting up...")
-	log.Printf("    API Server:         %s", node.config.apiserver)
-	log.Printf("    Log Path:           %s", node.config.logPath)
-	log.Printf("    Heartbeat Interval: %s", node.config.heartbeat)
+	log.Printf("    API Server:    %s", node.config.apiserver)
+	log.Printf("    Host Name:     %s", node.config.hostname)
+	log.Printf("    Log Path:      %s", node.config.logPath)
+	log.Printf("    Heartbeat:     %s", node.config.heartbeat)
+
+	// 记录传入的label信息
+	if len(labelstr) > 0 {
+		node.labels = make(map[string]string)
+		labels := strings.Split(labelstr, ";")
+		for _, label := range labels {
+			kv := strings.Split(label, "=")
+			if len(kv) == 2 {
+				node.labels[kv[0]] = kv[1]
+			}
+		}
+	}
 
 	// 确定系统的资源信息
-	if err := node.collectSystemResources(); err != nil {
+	if err := node.collectSystemResources(cpustr, gpustr, memorystr); err != nil {
 		log.Printf("Failed to collect system resources: %v\n", err)
 		return 1
 	}
@@ -89,7 +114,8 @@ func (node *NodeServer) Run() int {
 	return 0
 }
 
-func (node *NodeServer) collectSystemResources() error {
+func (node *NodeServer) collectSystemResources(cpustr string, gpustr string, memorystr string) error {
+	// 获取操作系统平台信息
 	if platform, family, version, err := host.PlatformInformation(); err == nil {
 		node.platform.Name = platform
 		node.platform.Family = family
@@ -99,29 +125,82 @@ func (node *NodeServer) collectSystemResources() error {
 		} else {
 			node.platform.Kind = constant.PlatformLinux
 		}
-		log.Printf("    Platform: %s(%s) %s", platform, family, node.platform.Version)
+		log.Printf("    Platform:      %s(%s) %s", platform, family, node.platform.Version)
 	} else {
 		return fmt.Errorf("Unable to get Operation System Information: %v", err)
 	}
-	if cc, err := cpu.Counts(true); err == nil {
-		node.resources.CPU.Cores = float32(cc)
-		log.Printf("    CPU Logical Cores: %d\n", cc)
+	// 获取CPU相关信息
+	if len(cpustr) == 0 {
+		if cc, err := cpu.Counts(true); err == nil {
+			node.resources.CPU.Cores = float32(cc)
+		} else {
+			return fmt.Errorf("Unable to get CPU Cores: %v", err)
+		}
+		if infos, err := cpu.Info(); err == nil {
+			node.resources.CPU.MinFreq = int(infos[0].Mhz)
+			node.resources.CPU.Frequency = int(node.resources.CPU.Cores) * node.resources.CPU.MinFreq
+		} else {
+			return fmt.Errorf("Unable to get CPU Information: %v", err)
+		}
 	} else {
-		return fmt.Errorf("Unable to get CPU Cores: %v", err)
-	}
-	if infos, err := cpu.Info(); err == nil {
-		node.resources.CPU.MinFreq = int(infos[0].Mhz)
+		cpus := strings.Split(cpustr, ";")
+		for _, s := range cpus {
+			kv := strings.Split(s, "=")
+			val, _ := strconv.Atoi(kv[1])
+			if kv[0] == "cores" {
+				node.resources.CPU.Cores = float32(val)
+			} else if kv[0] == "freq" {
+				node.resources.CPU.MinFreq = val
+			}
+		}
 		node.resources.CPU.Frequency = int(node.resources.CPU.Cores) * node.resources.CPU.MinFreq
-		log.Printf("    CPU Frequency: %d\n", node.resources.CPU.MinFreq)
-	} else {
-		return fmt.Errorf("Unable to get CPU Information: %v", err)
 	}
-	if v, err := mem.VirtualMemory(); err == nil {
-		node.resources.Memory = int(float64(v.Total/1024)/float64(1024)/float64(1024)+0.5) * 1024
-		log.Printf("    Total Memory: %v(%vMi)\n", v.Total, node.resources.Memory)
+	log.Printf("    CPU Cores:     %d\n", int(node.resources.CPU.Cores))
+	log.Printf("    CPU Frequency: %d\n", node.resources.CPU.MinFreq)
+	// 获取内存相关信息
+	if len(memorystr) == 0 {
+		if v, err := mem.VirtualMemory(); err == nil {
+			node.resources.Memory = int(float64(v.Total/1024)/float64(1024)/float64(1024)+0.5) * 1024
+		} else {
+			return fmt.Errorf("Unable to get system memory: %v", err)
+		}
 	} else {
-		return fmt.Errorf("Unable to get system memory: %v", err)
+		val, _ := strconv.Atoi(memorystr)
+		node.resources.Memory = val
 	}
+	log.Printf("    Total Memory:  %v Mi\n", node.resources.Memory)
+	// 获取GPU相关信息
+	if len(gpustr) == 0 {
+		if smi, err := exec.LookPath("nvidia-smi.exe"); err == nil {
+			log.Printf("    nvidia-smi.exe = %s\n", smi)
+		} else {
+			log.Println("nvidia-smi.exe cannot be found in current path or PATH environment")
+			node.resources.GPU.Cards = constant.DefaultNodeGPUCount
+			node.resources.GPU.Memory = constant.DefaultNodeGPUMemory
+			node.resources.GPU.CUDA = constant.DefaultNodeCUDA
+		}
+	} else {
+		gpus := strings.Split(gpustr, ";")
+		for _, s := range gpus {
+			kv := strings.Split(s, "=")
+			val, _ := strconv.Atoi(kv[1])
+			switch kv[0] {
+			case "cards":
+				node.resources.GPU.Cards = val
+			case "mem":
+				node.resources.GPU.Memory = val
+			case "cores":
+				node.resources.GPU.Cores = val
+			case "cuda":
+				node.resources.GPU.CUDA = val
+			}
+		}
+	}
+	log.Printf("    GPU Cards:     %d\n", node.resources.GPU.Cards)
+	log.Printf("    GPU Memory:    %d\n", node.resources.GPU.Memory)
+	log.Printf("    GPU Cores:     %d\n", node.resources.GPU.Cores)
+	log.Printf("    CUDA Version:  %d\n", node.resources.GPU.CUDA)
+	log.Println("All resources information collected")
 	return nil
 }
 

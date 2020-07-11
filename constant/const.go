@@ -5,6 +5,12 @@ const (
 	DefaultRestPort = 20516
 	// DefaultNodePort 是默认的对内部节点服务的端口
 	DefaultNodePort = 20517
+	// DefaultNodeGPUCount 是在无法正确获取GPU信息时节点默认的GPU卡数
+	DefaultNodeGPUCount = 1
+	// DefaultNodeGPUMemory 是在无法正确获取GPU信息时节点默认的GPU显存
+	DefaultNodeGPUMemory = 12
+	// DefaultNodeCUDA 是在无法正确获取GPU信息时节点默认的CUDA版本
+	DefaultNodeCUDA = 1020
 )
 
 const (

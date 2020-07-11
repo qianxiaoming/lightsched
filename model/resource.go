@@ -20,7 +20,7 @@ type ResourceCPU struct {
 type ResourceGPU struct {
 	Cards  int `json:"cards"`  // 使用的GPU个数
 	Cores  int `json:"cores"`  // 要求的GPU最少核心数
-	Memory int `json:"memory"` // 要求的GPU最低显存
+	Memory int `json:"memory"` // 要求的GPU最低显存，单位Gi
 	CUDA   int `json:"cuda"`   // 要求的CUDA最低版本，10.2为1020
 }
 
