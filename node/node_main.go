@@ -171,8 +171,36 @@ func (node *NodeServer) collectSystemResources(cpustr string, gpustr string, mem
 	log.Printf("    Total Memory:  %v Mi\n", node.resources.Memory)
 	// 获取GPU相关信息
 	if len(gpustr) == 0 {
-		if smi, err := exec.LookPath("nvidia-smi.exe"); err == nil {
-			log.Printf("    nvidia-smi.exe = %s\n", smi)
+		var smiName string
+		if node.platform.Kind == constant.PlatformWindows {
+			smiName = "nvidia-smi.exe"
+		} else {
+			smiName = "nvidia-smi"
+		}
+		if smi, err := exec.LookPath(smiName); err == nil {
+			cmd := exec.Command(smi, "-q", "-d", "MEMORY")
+			if output, err := cmd.CombinedOutput(); err == nil {
+				lines := strings.Split(string(output), "\n")
+				for _, line := range lines {
+					line = strings.Trim(line, " \r\n")
+					if len(line) == 0 {
+						continue
+					}
+					pos := strings.LastIndex(line, ": ")
+					if strings.HasPrefix(line, "CUDA") {
+						val, _ := strconv.ParseFloat(line[pos+2:], 32)
+						node.resources.GPU.CUDA = int(val * 100.0)
+					} else if strings.HasPrefix(line, "Attached GPUs") {
+						val, _ := strconv.Atoi(line[pos+2:])
+						node.resources.GPU.Cards = val
+					} else if strings.HasPrefix(line, "Total") {
+						pos2 := strings.LastIndex(line, " ")
+						val, _ := strconv.Atoi(line[pos+2 : pos2])
+						node.resources.GPU.Memory = val / 1024
+						break
+					}
+				}
+			}
 		} else {
 			log.Println("nvidia-smi.exe cannot be found in current path or PATH environment")
 			node.resources.GPU.Cards = constant.DefaultNodeGPUCount
