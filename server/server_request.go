@@ -1,20 +1,22 @@
 package server
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"path/filepath"
+	"time"
 
 	"github.com/qianxiaoming/lightsched/constant"
+	"github.com/qianxiaoming/lightsched/message"
 	"github.com/qianxiaoming/lightsched/model"
 	"github.com/qianxiaoming/lightsched/util"
-	uuid "github.com/satori/go.uuid"
 )
 
 func (svc *APIServer) requestCreateJob(spec *model.JobSpec) error {
 	// 如果没有指定作业编号和队列则指定默认值
 	if len(spec.ID) == 0 {
-		spec.ID = uuid.NewV4().String()
+		spec.ID = util.GenerateUUID()
 	}
 	if len(spec.Queue) == 0 {
 		spec.Queue = constant.DefaultQueueName
@@ -44,5 +46,32 @@ func (svc *APIServer) requestCreateJob(spec *model.JobSpec) error {
 		job.JSON = nil
 	}
 
+	return nil
+}
+
+func (svc *APIServer) requestRegisterNode(ip string, req *message.RegisterNode) error {
+	if len(req.Name) == 0 {
+		return fmt.Errorf("the name of the node is empty")
+	}
+	node := &model.WorkNode{
+		Name:      req.Name,
+		Address:   ip,
+		Platform:  req.Platform,
+		State:     model.NodeOnline,
+		Online:    time.Now(),
+		Labels:    req.Labels,
+		Taints:    nil,
+		Resources: req.Resources,
+		Reserved:  *model.DefaultResourceSet,
+		Available: req.Resources,
+	}
+	node.Available.Consume(&node.Reserved)
+
+	svc.nodes.Lock()
+	defer svc.nodes.Unlock()
+	svc.nodes.AddNode(node)
+
+	// 标记任务调度状态
+	svc.setScheduleFlag()
 	return nil
 }

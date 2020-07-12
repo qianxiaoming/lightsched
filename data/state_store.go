@@ -44,7 +44,7 @@ func NewStateStore() *StateStore {
 }
 
 func (m *StateStore) InitState(path string) error {
-	m.dbPath = filepath.Join(util.GetCurrentPath(), path, constant.DatabaseFileName)
+	m.dbPath = filepath.Join(path, constant.DatabaseFileName)
 	if !util.PathExists(m.dbPath) {
 		if err := createDatabaseFile(m.dbPath); err != nil {
 			return err

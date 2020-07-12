@@ -17,8 +17,8 @@ import (
 	"time"
 
 	"github.com/qianxiaoming/lightsched/constant"
-	"github.com/qianxiaoming/lightsched/model"
 	"github.com/qianxiaoming/lightsched/message"
+	"github.com/qianxiaoming/lightsched/model"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/host"
 	"github.com/shirou/gopsutil/mem"
@@ -249,9 +249,12 @@ func (node *NodeServer) registerSelf() error {
 	if resp, err := http.Post("http://"+node.config.apiserver+"/nodes", "application/json", bytes.NewReader(content)); err == nil {
 		defer resp.Body.Close()
 		body, _ := ioutil.ReadAll(resp.Body)
-		log.Printf("Node registered: %s\n", string(body))
-
-		node.state = model.NodeOnline
+		if resp.StatusCode == http.StatusOK {
+			log.Printf("Node registered: %s\n", string(body))
+			node.state = model.NodeOnline
+		} else {
+			log.Printf("Failed to register node to API Server: %s", string(body))
+		}
 		return nil
 	} else {
 		log.Printf("Failed to register node to API Server: %v", err)

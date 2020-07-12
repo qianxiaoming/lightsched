@@ -33,7 +33,7 @@ type ResourceSet struct {
 
 // DefaultResourceSet 是赋给未指定任何资源需求任务的默认需求
 var DefaultResourceSet *ResourceSet = &ResourceSet{
-	CPU:    ResourceCPU{Cores: 0.8, Frequency: 2048},
+	CPU:    ResourceCPU{Cores: 1, Frequency: 2048},
 	GPU:    ResourceGPU{Cards: 0},
 	Memory: 1024,
 }
@@ -98,8 +98,17 @@ func (res *ResourceSet) Consume(other *ResourceSet) {
 		res.CPU.Cores = float32(int32(res.CPU.Cores*1000)) / 1000.0
 	}
 	res.CPU.Frequency = res.CPU.Frequency - other.CPU.Frequency
+	if res.CPU.Frequency <= 0 {
+		res.CPU.Frequency = 0
+	}
 	res.Memory = res.Memory - other.Memory
+	if res.Memory <= 0 {
+		res.Memory = 0
+	}
 	res.GPU.Cards = res.GPU.Cards - other.GPU.Cards
+	if res.GPU.Cards <= 0 {
+		res.GPU.Cards = 0
+	}
 	for k, v := range res.Others {
 		if vo, ok := other.Others[k]; ok {
 			res.Others[k] = v - vo

@@ -188,4 +188,5 @@ func (svc *APIServer) registerNodeEndpoint(router *gin.Engine) {
 	}
 	// 绑定/heartbeat相关路径处理
 	registerEndpoint(&HeartbeatEndpoint{server: svc})
+	registerEndpoint(&NodeRegisterEndpoint{server: svc})
 }

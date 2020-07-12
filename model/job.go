@@ -26,7 +26,7 @@ const (
 
 // JobSpec 表示提交的作业的基本信息，包含多个任务组的描述。
 type JobSpec struct {
-	ID          string            `json:"id"`
+	ID          string            `json:"id,omitempty"`
 	Name        string            `json:"name"`
 	Queue       string            `json:"queue"`
 	Priority    int               `json:"priority,omitempty"`
