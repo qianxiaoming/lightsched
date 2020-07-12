@@ -8,23 +8,6 @@ import (
 	"github.com/qianxiaoming/lightsched/message"
 )
 
-// HeartbeatEndpoint 是计算节点向主节点发送心跳信息的接口
-type HeartbeatEndpoint struct {
-	server *APIServer
-}
-
-func (e *HeartbeatEndpoint) registerRoute() {
-	e.server.nodeRouter.POST(e.restPrefix(), func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"ack": "ok",
-		})
-	})
-}
-
-func (e *HeartbeatEndpoint) restPrefix() string {
-	return "/heartbeat"
-}
-
 // NodeRegisterEndpoint 是计算节点向主节点注册的接口Node
 type NodeRegisterEndpoint struct {
 	server *APIServer
@@ -56,4 +39,29 @@ func (e *NodeRegisterEndpoint) registerRoute() {
 
 func (e *NodeRegisterEndpoint) restPrefix() string {
 	return "/nodes"
+}
+
+// HeartbeatEndpoint 是计算节点向主节点发送心跳信息的接口
+type HeartbeatEndpoint struct {
+	server *APIServer
+}
+
+func (e *HeartbeatEndpoint) registerRoute() {
+	e.server.nodeRouter.POST(e.restPrefix(), func(c *gin.Context) {
+		hb := &message.Heartbeat{}
+		if err := c.BindJSON(hb); err == nil {
+			msgs := e.server.nodes.PeriodicUpdate(hb.Name, hb.CPU, hb.Memory)
+			if msgs == nil {
+				c.Status(http.StatusOK)
+			} else {
+				c.JSON(http.StatusOK, msgs)
+			}
+		} else {
+			responseError(http.StatusBadRequest, "Parse request failed: %v", err, c)
+		}
+	})
+}
+
+func (e *HeartbeatEndpoint) restPrefix() string {
+	return "/heartbeat"
 }

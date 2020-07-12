@@ -32,6 +32,11 @@ type Config struct {
 	logPath   string
 }
 
+type Heartbeat struct {
+	errors int
+	url    string
+}
+
 // NodeServer 是集群的工作节点服务。每个执行任务的节点上部署1个NodeServer。
 type NodeServer struct {
 	config    Config
@@ -39,6 +44,7 @@ type NodeServer struct {
 	platform  model.PlatformInfo
 	labels    map[string]string
 	state     model.NodeState
+	heartbeat Heartbeat
 	update    chan interface{}
 }
 
@@ -63,6 +69,10 @@ func NewNodeServer(apiserver string, hostname string) *NodeServer {
 			logPath:   logPath,
 		},
 		state: model.NodeUnknown,
+		heartbeat: Heartbeat{
+			errors: 0,
+			url:    "http://" + apiserver + "/heartbeat",
+		},
 	}
 }
 
@@ -110,6 +120,19 @@ func (node *NodeServer) Run(cpustr string, gpustr string, memorystr string, labe
 				// 初始状态或访问API Server失败，进入重新注册阶段
 				if err := node.registerSelf(); err != nil {
 					timeout = node.config.heartbeat * 5
+				}
+			} else if node.state == model.NodeOnline {
+				// 正常状态下发送心跳信息
+				if err := node.sendHeartbeat(); err == nil {
+					node.heartbeat.errors = 0
+				} else {
+					node.heartbeat.errors = node.heartbeat.errors + 1
+					if node.heartbeat.errors >= 5 {
+						node.state = model.NodeUnknown
+						node.heartbeat.errors = 0
+					} else {
+						timeout = node.config.heartbeat * 3
+					}
 				}
 			}
 			timer.Reset(timeout)
@@ -252,6 +275,7 @@ func (node *NodeServer) registerSelf() error {
 		if resp.StatusCode == http.StatusOK {
 			log.Printf("Node registered: %s\n", string(body))
 			node.state = model.NodeOnline
+			node.heartbeat.errors = 0
 		} else {
 			log.Printf("Failed to register node to API Server: %s", string(body))
 		}

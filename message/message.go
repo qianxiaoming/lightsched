@@ -20,3 +20,10 @@ type RegisterNode struct {
 	Labels    map[string]string  `json:"labels,omitempty"`
 	Resources model.ResourceSet  `json:"resources"`
 }
+
+// Heartbeat 节点心跳信息
+type Heartbeat struct {
+	Name   string  `json:"name"`
+	CPU    float64 `json:"cpu"`
+	Memory float64 `json:"memory"`
+}
