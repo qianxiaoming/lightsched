@@ -19,7 +19,6 @@ type ResourceCPU struct {
 // ResourceGPU 是GPU资源的需求或提供信息G
 type ResourceGPU struct {
 	Cards  int `json:"cards"`  // 使用的GPU个数
-	Cores  int `json:"cores"`  // 要求的GPU最少核心数
 	Memory int `json:"memory"` // 要求的GPU最低显存，单位Gi
 	CUDA   int `json:"cuda"`   // 要求的CUDA最低版本，10.2为1020
 }
@@ -156,9 +155,6 @@ func NewResourceSetWithSpec(spec *ResourceSpec) *ResourceSet {
 		if strings.Compare(k, "cards") == 0 {
 			cards, _ := strconv.Atoi(v)
 			res.GPU.Cards = cards
-		} else if strings.Compare(k, "cores") == 0 {
-			cores, _ := strconv.Atoi(v)
-			res.GPU.Cores = cores
 		} else if strings.Compare(k, "memory") == 0 {
 			v, u := util.ParseValueAndUnit(v)
 			if strings.Compare(u, "mi") == 0 {

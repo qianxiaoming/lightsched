@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 
 	"github.com/qianxiaoming/lightsched/model"
+	"github.com/qianxiaoming/lightsched/message"
 )
 
 // scheduleRecord 表示可调度的节点
@@ -80,7 +81,6 @@ func scheduleOneTask(svc *APIServer, task *model.Task, nodes []*scheduleNode) *s
 				// 计算GPU得分
 				gpuScore := (float32(node.available.GPU.Cards) / float32(node.node.Resources.GPU.Cards)) * 5.0
 				gpuScore = gpuScore * float32(node.node.Resources.GPU.Memory) / 8.0
-				gpuScore = gpuScore * float32(node.node.Resources.GPU.Cores) / 3000.0
 				node.score += gpuScore
 			}
 			// 记录当前得分最高的节点
@@ -192,7 +192,7 @@ func (svc *APIServer) runScheduleCycle() {
 		record.target.node.Available.Consume(record.task.Resources)
 		// 缓存调度结果，以便节点拉取调度到自身的Task
 		msg, _ := json.Marshal(record.task)
-		svc.nodes.AppendNodeMessage(record.target.node.Name, model.MsgScheduleTask, msg)
+		svc.nodes.AppendNodeMessage(record.target.node.Name, message.KindScheduleTask, msg)
 
 		updates = append(updates, record.task)
 	}

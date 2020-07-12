@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/qianxiaoming/lightsched/model"
+	"github.com/qianxiaoming/lightsched/message"
 )
 
 const (
@@ -16,7 +17,7 @@ const (
 // NodeBucket 保存要发给节点的消息。多个节点可能会共享同一个NodeBucket。
 type NodeBucket struct {
 	sync.Mutex
-	Messages map[string][]model.JSONMessage
+	Messages map[string][]message.JSON
 }
 
 // NodeCache 记录了所有节点的信息，以及要分发给节点的Task信息
@@ -42,7 +43,6 @@ func NewNodeCache() *NodeCache {
 	node1.Resources.CPU.Frequency = 24 * 3000
 	node1.Resources.CPU.MinFreq = 3000
 	node1.Resources.GPU.Cards = 4
-	node1.Resources.GPU.Cores = 2048
 	node1.Resources.GPU.Memory = 8
 	node1.Resources.GPU.CUDA = 1020
 	node1.Resources.Memory = 32000
@@ -58,7 +58,6 @@ func NewNodeCache() *NodeCache {
 	node2.Resources.CPU.Frequency = 16 * 2400
 	node2.Resources.CPU.MinFreq = 2400
 	node2.Resources.GPU.Cards = 4
-	node2.Resources.GPU.Cores = 4096
 	node2.Resources.GPU.Memory = 11
 	node2.Resources.GPU.CUDA = 1020
 	node2.Resources.Memory = 32000
@@ -93,9 +92,9 @@ func (cache *NodeCache) AddNode(node *model.WorkNode) {
 	cache.Buckets[index].Lock()
 	defer cache.Buckets[index].Unlock()
 	if cache.Buckets[index].Messages == nil {
-		cache.Buckets[index].Messages = make(map[string][]model.JSONMessage)
+		cache.Buckets[index].Messages = make(map[string][]message.JSON)
 	}
-	cache.Buckets[index].Messages[node.Name] = make([]model.JSONMessage, 0, 8)
+	cache.Buckets[index].Messages[node.Name] = make([]message.JSON, 0, 8)
 }
 
 // AppendNodeMessage 给指定的节点增加一个消息
@@ -105,18 +104,18 @@ func (cache *NodeCache) AppendNodeMessage(name string, kind string, json []byte)
 	defer cache.Buckets[index].Unlock()
 	msgs := cache.Buckets[index].Messages[name]
 	cache.Buckets[index].Messages[name] = append(msgs,
-		model.JSONMessage{
-			Kind: kind,
-			JSON: json,
+		message.JSON{
+			Kind:    kind,
+			Content: json,
 		})
 }
 
 // TakeNodeMessage 获取指定节点的消息，然后清空它的消息列表
-func (cache *NodeCache) TakeNodeMessage(name string) []model.JSONMessage {
+func (cache *NodeCache) TakeNodeMessage(name string) []message.JSON {
 	index := int(sha1.Sum([]byte(name))[0]) % NodeBucketCount
 	cache.Buckets[index].Lock()
 	defer cache.Buckets[index].Unlock()
 	msgs := cache.Buckets[index].Messages[name]
-	cache.Buckets[index].Messages[name] = make([]model.JSONMessage, 0, 8)
+	cache.Buckets[index].Messages[name] = make([]message.JSON, 0, 8)
 	return msgs
 }

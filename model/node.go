@@ -14,12 +14,12 @@ const (
 	NodeUnknown
 )
 
-// Platform 包含操作系统相关的信息
+// PlatformInfo 包含操作系统相关的信息
 type PlatformInfo struct {
-	Kind    string
-	Name    string
-	Family  string
-	Version string
+	Kind    string `json:"kind"`
+	Name    string `json:"name"`
+	Family  string `json:"family"`
+	Version string `json:"version"`
 }
 
 // WorkNode 代表实际执行计算任务的节点

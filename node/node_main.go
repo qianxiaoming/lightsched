@@ -1,8 +1,12 @@
 package node
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -14,6 +18,7 @@ import (
 
 	"github.com/qianxiaoming/lightsched/constant"
 	"github.com/qianxiaoming/lightsched/model"
+	"github.com/qianxiaoming/lightsched/message"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/host"
 	"github.com/shirou/gopsutil/mem"
@@ -217,8 +222,6 @@ func (node *NodeServer) collectSystemResources(cpustr string, gpustr string, mem
 				node.resources.GPU.Cards = val
 			case "mem":
 				node.resources.GPU.Memory = val
-			case "cores":
-				node.resources.GPU.Cores = val
 			case "cuda":
 				node.resources.GPU.CUDA = val
 			}
@@ -226,12 +229,32 @@ func (node *NodeServer) collectSystemResources(cpustr string, gpustr string, mem
 	}
 	log.Printf("    GPU Cards:     %d\n", node.resources.GPU.Cards)
 	log.Printf("    GPU Memory:    %d\n", node.resources.GPU.Memory)
-	log.Printf("    GPU Cores:     %d\n", node.resources.GPU.Cores)
 	log.Printf("    CUDA Version:  %d\n", node.resources.GPU.CUDA)
 	log.Println("All resources information collected")
 	return nil
 }
 
 func (node *NodeServer) registerSelf() error {
-	return nil
+	if node.state == model.NodeOffline {
+		return nil
+	}
+	log.Printf("Register node to API Server %s as %s...\n", node.config.apiserver, node.config.hostname)
+	msg := &message.RegisterNode{
+		Name:      node.config.hostname,
+		Platform:  node.platform,
+		Labels:    node.labels,
+		Resources: node.resources,
+	}
+	content, _ := json.Marshal(msg)
+	if resp, err := http.Post("http://"+node.config.apiserver+"/nodes", "application/json", bytes.NewReader(content)); err == nil {
+		defer resp.Body.Close()
+		body, _ := ioutil.ReadAll(resp.Body)
+		log.Printf("Node registered: %s\n", string(body))
+
+		node.state = model.NodeOnline
+		return nil
+	} else {
+		log.Printf("Failed to register node to API Server: %v", err)
+		return err
+	}
 }
