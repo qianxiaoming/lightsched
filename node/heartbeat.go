@@ -34,10 +34,17 @@ func (node *NodeServer) sendHeartbeat() error {
 		if err = json.Unmarshal(body, &msgs); err != nil {
 			log.Printf("Unable to unmarshal the response for heartbeat: %v", err)
 		} else {
-			for i, msg := range msgs {
-				log.Println("    ", i, msg.Kind)
-			}
+			node.runServerMessages(msgs)
 		}
 	}
 	return nil
+}
+
+func (node *NodeServer) runServerMessages(msgs []message.JSON) {
+	for _, msg := range msgs {
+		switch msg.Kind {
+		case message.KindScheduleTask:
+			go node.runExecuteTask(msg)
+		}
+	}
 }
