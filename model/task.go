@@ -56,10 +56,9 @@ type Task struct {
 	NodeName   string            `json:"node,omitempty"`
 	Progress   int               `json:"-"`
 	ExitCode   int               `json:"exit_code"`
+	Error      string            `json:"error"`
 	StartTime  time.Time         `json:"start_time"`
 	FinishTime time.Time         `json:"finish_time"`
-	SystemTime time.Duration     `json:"system_time,omitempty"`
-	UserTime   time.Duration     `json:"user_time,omitempty"`
 }
 
 // NewTaskWithSpec 根据指定的TaskSpec内容创建对应的Task对象

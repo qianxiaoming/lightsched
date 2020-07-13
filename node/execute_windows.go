@@ -15,14 +15,11 @@ import (
 func (node *NodeServer) runExecuteTask(msg message.JSON) {
 	task := &model.Task{}
 	if err := json.Unmarshal(msg.Content, task); err != nil {
-		// TODO 这里应该加入对API Server的回应：Task执行失败
 		log.Printf("Unable to unmarshal task json: %v\n", err)
 	} else {
 		log.Printf("Execute task(%s) program: %s %s\n", task.ID, task.Command, task.Args)
 		cmd := exec.Command(task.Command, task.Args)
 		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-		// for linux TODO
-		// cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, Setpgid: true}
 
 		if len(task.WorkDir) > 0 {
 			cmd.Dir = task.WorkDir
@@ -32,13 +29,15 @@ func (node *NodeServer) runExecuteTask(msg message.JSON) {
 		}
 		stdout, err := cmd.StdoutPipe()
 		if err != nil {
-			log.Printf("Cannot get standard output pipe: %v\n", err)
-			// TODO
+			log.Printf("Cannot get standard output pipe for task(%s): %v\n", task.ID, err)
+			node.notifyTaskStatus(task.ID, model.TaskAborted, 0, 0, err.Error())
+			return
 		}
 		cmd.Stderr = cmd.Stdout
 		if err := cmd.Start(); err != nil {
 			log.Printf("Cannot start program for task(%s): %v\n", task.ID, err)
-			// TODO 发送消息给主线程，通知任务失败
+			node.notifyTaskStatus(task.ID, model.TaskAborted, 0, 0, err.Error())
+			return
 		}
 
 		reader := bufio.NewReader(stdout)
@@ -52,10 +51,17 @@ func (node *NodeServer) runExecuteTask(msg message.JSON) {
 		}
 		if err := cmd.Wait(); err != nil {
 			if exit, ok := err.(*exec.ExitError); ok {
-				log.Printf("Program exit error: %v\n", exit)
+				log.Printf("Task(%s) program exit error: %v\n", task.ID, err)
+				if exit.Success() {
+					log.Printf("Task(%s) program exit successfully\n", task.ID)
+					node.notifyTaskStatus(task.ID, model.TaskCompleted, 100, 0, "")
+				} else {
+					node.notifyTaskStatus(task.ID, model.TaskFailed, -1, exit.ExitCode(), exit.Error())
+				}
 			}
 		} else {
-			log.Println("Program exit successfully")
+			log.Printf("Task(%s) program exit successfully\n", task.ID)
+			node.notifyTaskStatus(task.ID, model.TaskCompleted, 100, 0, "")
 		}
 	}
 }

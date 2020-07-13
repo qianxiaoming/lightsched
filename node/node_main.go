@@ -33,8 +33,9 @@ type Config struct {
 }
 
 type Heartbeat struct {
-	errors int
-	url    string
+	errors  int
+	url     string
+	payload map[string]*message.TaskStatus
 }
 
 // NodeServer 是集群的工作节点服务。每个执行任务的节点上部署1个NodeServer。
@@ -45,7 +46,7 @@ type NodeServer struct {
 	labels    map[string]string
 	state     model.NodeState
 	heartbeat Heartbeat
-	update    chan interface{}
+	update    chan *message.TaskStatus
 }
 
 // NewNodeServer 创建1个NodeServer实例
@@ -70,9 +71,11 @@ func NewNodeServer(apiserver string, hostname string) *NodeServer {
 		},
 		state: model.NodeUnknown,
 		heartbeat: Heartbeat{
-			errors: 0,
-			url:    "http://" + apiserver + "/heartbeat",
+			errors:  0,
+			url:     "http://" + apiserver + "/heartbeat",
+			payload: make(map[string]*message.TaskStatus),
 		},
+		update: make(chan *message.TaskStatus, 32),
 	}
 }
 
@@ -112,8 +115,10 @@ func (node *NodeServer) Run(cpustr string, gpustr string, memorystr string, labe
 		select {
 		case <-quit:
 			stopped = true
-		case <-node.update:
-
+		case status := <-node.update:
+			log.Printf("Update task %s to %d(%d%%)\n", status.ID, status.State, status.Progress)
+			// 只保留Task最新的状态信息
+			node.heartbeat.payload[status.ID] = status
 		case <-timer.C:
 			timeout := node.config.heartbeat
 			if node.state == model.NodeUnknown {
@@ -140,6 +145,16 @@ func (node *NodeServer) Run(cpustr string, gpustr string, memorystr string, labe
 	}
 	log.Println("Server exited")
 	return 0
+}
+
+func (node *NodeServer) notifyTaskStatus(id string, state model.TaskState, progress int, exit int, err string) {
+	node.update <- &message.TaskStatus{
+		ID:       id,
+		State:    state,
+		Progress: progress,
+		ExitCode: exit,
+		Error:    err,
+	}
 }
 
 func (node *NodeServer) collectSystemResources(cpustr string, gpustr string, memorystr string) error {
