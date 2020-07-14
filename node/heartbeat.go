@@ -15,10 +15,19 @@ import (
 func (node *NodeServer) sendHeartbeat() error {
 	cpu, _ := cpu.Percent(0, false)
 	mem, _ := mem.VirtualMemory()
+	var payload []*message.TaskStatus
+	if len(node.heartbeat.payload) > 0 {
+		payload = make([]*message.TaskStatus, 0, len(node.heartbeat.payload))
+		for _, v := range node.heartbeat.payload {
+			payload = append(payload, v)
+		}
+		node.heartbeat.payload = make(map[string]*message.TaskStatus)
+	}
 	hb := &message.Heartbeat{
-		Name:   node.config.hostname,
-		CPU:    cpu[0],
-		Memory: mem.UsedPercent,
+		Name:    node.config.hostname,
+		CPU:     cpu[0],
+		Memory:  mem.UsedPercent,
+		Payload: payload,
 	}
 	request, _ := json.Marshal(hb)
 	if resp, err := http.Post(node.heartbeat.url, "application/json", bytes.NewReader(request)); err != nil {

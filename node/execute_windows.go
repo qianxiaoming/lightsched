@@ -15,7 +15,7 @@ import (
 func (node *NodeServer) runExecuteTask(msg message.JSON) {
 	task := &model.Task{}
 	if err := json.Unmarshal(msg.Content, task); err != nil {
-		log.Printf("Unable to unmarshal task json: %v\n", err)
+		log.Printf("NOTICE: Unable to unmarshal task json and just ignore it now: %v\n", err)
 	} else {
 		log.Printf("Execute task(%s) program: %s %s\n", task.ID, task.Command, task.Args)
 		cmd := exec.Command(task.Command, task.Args)
@@ -30,16 +30,18 @@ func (node *NodeServer) runExecuteTask(msg message.JSON) {
 		stdout, err := cmd.StdoutPipe()
 		if err != nil {
 			log.Printf("Cannot get standard output pipe for task(%s): %v\n", task.ID, err)
-			node.notifyTaskStatus(task.ID, model.TaskAborted, 0, 0, err.Error())
+			node.notifyTaskStatus(task.ID, model.TaskAborted, 0, 0, 0, err.Error())
 			return
 		}
 		cmd.Stderr = cmd.Stdout
 		if err := cmd.Start(); err != nil {
 			log.Printf("Cannot start program for task(%s): %v\n", task.ID, err)
-			node.notifyTaskStatus(task.ID, model.TaskAborted, 0, 0, err.Error())
+			node.notifyTaskStatus(task.ID, model.TaskAborted, 0, 0, 0, err.Error())
 			return
 		}
+		node.notifyTaskStatus(task.ID, model.TaskExecuting, cmd.Process.Pid, 0, 0, "")
 
+		progress := 0
 		reader := bufio.NewReader(stdout)
 		for {
 			line, err := reader.ReadString('\n')
@@ -51,17 +53,17 @@ func (node *NodeServer) runExecuteTask(msg message.JSON) {
 		}
 		if err := cmd.Wait(); err != nil {
 			if exit, ok := err.(*exec.ExitError); ok {
-				log.Printf("Task(%s) program exit error: %v\n", task.ID, err)
 				if exit.Success() {
 					log.Printf("Task(%s) program exit successfully\n", task.ID)
-					node.notifyTaskStatus(task.ID, model.TaskCompleted, 100, 0, "")
+					node.notifyTaskStatus(task.ID, model.TaskCompleted, 0, progress, 0, "")
 				} else {
-					node.notifyTaskStatus(task.ID, model.TaskFailed, -1, exit.ExitCode(), exit.Error())
+					log.Printf("Task(%s) program exit error: %d %v\n", task.ID, exit.ExitCode(), err)
+					node.notifyTaskStatus(task.ID, model.TaskFailed, 0, progress, exit.ExitCode(), exit.Error())
 				}
 			}
 		} else {
 			log.Printf("Task(%s) program exit successfully\n", task.ID)
-			node.notifyTaskStatus(task.ID, model.TaskCompleted, 100, 0, "")
+			node.notifyTaskStatus(task.ID, model.TaskCompleted, 0, progress, 0, "")
 		}
 	}
 }

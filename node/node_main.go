@@ -40,13 +40,14 @@ type Heartbeat struct {
 
 // NodeServer 是集群的工作节点服务。每个执行任务的节点上部署1个NodeServer。
 type NodeServer struct {
-	config    Config
-	resources model.ResourceSet
-	platform  model.PlatformInfo
-	labels    map[string]string
-	state     model.NodeState
-	heartbeat Heartbeat
-	update    chan *message.TaskStatus
+	config     Config
+	resources  model.ResourceSet
+	platform   model.PlatformInfo
+	labels     map[string]string
+	state      model.NodeState
+	heartbeat  Heartbeat
+	executings map[string]int // 正在运行的Task进程
+	update     chan *message.TaskStatus
 }
 
 // NewNodeServer 创建1个NodeServer实例
@@ -116,9 +117,21 @@ func (node *NodeServer) Run(cpustr string, gpustr string, memorystr string, labe
 		case <-quit:
 			stopped = true
 		case status := <-node.update:
-			log.Printf("Update task %s to %d(%d%%)\n", status.ID, status.State, status.Progress)
-			// 只保留Task最新的状态信息
-			node.heartbeat.payload[status.ID] = status
+			// 更新Task的最新状态。状态信息将在心跳中统一发给服务端。
+			if last, ok := node.heartbeat.payload[status.ID]; ok && last.State == status.State {
+				last.Progress = status.Progress
+				last.Error = status.Error
+			} else {
+				node.heartbeat.payload[status.ID] = status
+			}
+			// 检擦是否在“正在运行任务”列表中
+			if _, ok := node.executings[status.ID]; ok {
+				if status.State != model.TaskExecuting {
+					delete(node.executings, status.ID)
+				}
+			} else if status.State == model.TaskExecuting {
+				node.executings[status.ID] = status.PID
+			}
 		case <-timer.C:
 			timeout := node.config.heartbeat
 			if node.state == model.NodeUnknown {
@@ -131,6 +144,7 @@ func (node *NodeServer) Run(cpustr string, gpustr string, memorystr string, labe
 				if err := node.sendHeartbeat(); err == nil {
 					node.heartbeat.errors = 0
 				} else {
+					// 心跳发送失败时增加失败计数。当计数累加到5时进入未注册状态。
 					node.heartbeat.errors = node.heartbeat.errors + 1
 					if node.heartbeat.errors >= 5 {
 						node.state = model.NodeUnknown
@@ -147,10 +161,11 @@ func (node *NodeServer) Run(cpustr string, gpustr string, memorystr string, labe
 	return 0
 }
 
-func (node *NodeServer) notifyTaskStatus(id string, state model.TaskState, progress int, exit int, err string) {
+func (node *NodeServer) notifyTaskStatus(id string, state model.TaskState, pid, progress, exit int, err string) {
 	node.update <- &message.TaskStatus{
 		ID:       id,
 		State:    state,
+		PID:      pid,
 		Progress: progress,
 		ExitCode: exit,
 		Error:    err,
