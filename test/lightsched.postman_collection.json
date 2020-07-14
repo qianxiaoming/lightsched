@@ -1,0 +1,133 @@
+{
+	"info": {
+		"_postman_id": "7d8ff4a8-b002-49be-9691-f92731dd06a5",
+		"name": "lightsched",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Create Job",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"name\": \"my-job-2\",\r\n    \"queue\": \"default\",\r\n    \"priority\": 1000,\r\n    \"schedulable\": true,\r\n    \"max_errors\": 2,\r\n    \"groups\": [\r\n        {\r\n            \"name\": \"first group\",\r\n            \"command\": \"/opt/lightsched/bin/example-gpu-job\",\r\n            \"envs\": [\"GPU_INDEX=0\", \"CUDA_VERSION=10.2\"],\r\n            \"resources\": {\r\n                \"cpu\": {\r\n                    \"cores\": \"0.9\",\r\n                    \"frequency\": \"2.7GHz\",\r\n                    \"min_frequency\": \"2.0GHz\"\r\n                },\r\n                \"gpu\": {\r\n                    \"cards\": \"1\",\r\n                    \"memory\": \"4Gi\",\r\n                    \"cuda\": \"10.2\"\r\n                },\r\n                \"memory\": \"2000Mi\"\r\n            },\r\n            \"tasks\": [\r\n                {\r\n                    \"name\": \"basic cmd\",\r\n                    \"args\": \"count=100 size=10kb\"\r\n                },\r\n                {\r\n                    \"name\": \"more cmd\",\r\n                    \"command\": \"/opt/lightsched/bin/second-command\",\r\n                    \"args\": \"times 1000\",\r\n                    \"envs\": [\"LD_LIBRARY_PATH=/opt/lightsched/bin\"],\r\n                    \"resources\": {\r\n                        \"cpu\": {\r\n                            \"cores\": \"2.5\",\r\n                            \"frequency\": \"2.0GHz\"\r\n                        },\r\n                        \"memory\": \"4000Mi\"\r\n                    }\r\n                },\r\n                {\r\n                    \"name\": \"last cmd\",\r\n                    \"command\": \"/opt/lightsched/bin/last-command\",\r\n                    \"args\": \"times 2000\",\r\n                    \"envs\": [\"LD_LIBRARY_PATH=/opt/lightsched/bin\"],\r\n                    \"resources\": {\r\n                        \"cpu\": {\r\n                            \"cores\": \"3.5\",\r\n                            \"frequency\": \"2.0GHz\"\r\n                        },\r\n                        \"memory\": \"4000Mi\"\r\n                    }\r\n                }\r\n            ]\r\n        },\r\n        {\r\n            \"name\": \"second group\",\r\n            \"workdir\": \"/data\",\r\n            \"envs\": [\"license=piesat\", \"DEBUG_MODE=0\", \"LOG_LEVEL=ERROR\"],\r\n            \"resources\": {\r\n                \"cpu\": {\r\n                    \"cores\": \"2\",\r\n                    \"frequency\": \"3000MHz\"\r\n                },\r\n                \"memory\": \"4Gi\"\r\n            },\r\n            \"tasks\": [\r\n                {\r\n                    \"name\": \"Init Task\",\r\n                    \"command\": \"/opt/lightsched/bin/test-command\",\r\n                    \"workdir\": \"/tmp\",\r\n                    \"args\": \"GIN_MODE=release\",\r\n                    \"resources\": {\r\n                        \"cpu\": {\r\n                            \"cores\": \"2.5\",\r\n                            \"frequency\": \"2.0GHz\"\r\n                        },\r\n                        \"memory\": \"4000Mi\"\r\n                    }\r\n                },\r\n                {\r\n                    \"name\": \"Group2 GPU Task\",\r\n                    \"command\": \"/opt/lightsched/bin/second-command\",\r\n                    \"args\": \"times 1000\",\r\n                    \"envs\": [\"LD_LIBRARY_PATH=/opt/lightsched/bin\"],\r\n                    \"resources\": {\r\n                        \"gpu\": {\r\n                            \"cards\": \"1\",\r\n                            \"memory\": \"8Gi\",\r\n                            \"cuda\": \"10.2\"\r\n                        },\r\n                        \"memory\": \"1Gi\"\r\n                    }\r\n                },\r\n                {\r\n                    \"name\": \"Group2 Task\",\r\n                    \"command\": \"/opt/lightsched/bin/third-command\",\r\n                    \"args\": \"times 1000\",\r\n                    \"envs\": [\"LD_LIBRARY_PATH=/opt/omen/bin\"],\r\n                    \"resources\": {\r\n                        \"gpu\": {\r\n                            \"cards\": \"1\",\r\n                            \"memory\": \"8Gi\",\r\n                            \"cuda\": \"10.2\"\r\n                        },\r\n                        \"memory\": \"1Gi\"\r\n                    }\r\n                }\r\n            ]\r\n        }\r\n    ]\r\n}"
+				},
+				"url": {
+					"raw": "127.0.0.1:20516/jobs",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "20516",
+					"path": [
+						"jobs"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create Many Job",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"type": "text",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"id\": \"this-is-a-job-with-many-tasks-5\",\r\n    \"name\": \"Many Task Job\",\r\n    \"queue\": \"default\",\r\n    \"priority\": 1000,\r\n    \"schedulable\": true,\r\n    \"max_errors\": 2,\r\n    \"groups\": [\r\n        {\r\n            \"name\": \"first group\",\r\n            \"command\": \"/opt/lightsched/bin/example-gpu-job\",\r\n            \"envs\": [\"GPU_INDEX=0\", \"CUDA_VERSION=10.2\"],\r\n            \"resources\": {\r\n                \"cpu\": {\r\n                    \"cores\": \"0.9\",\r\n                    \"frequency\": \"2.7GHz\",\r\n                    \"min_frequency\": \"2.0GHz\"\r\n                },\r\n                \"gpu\": {\r\n                    \"cards\": \"2\",\r\n                    \"cores\": \"2048\",\r\n                    \"memory\": \"4Gi\",\r\n                    \"cuda\": \"10.2\"\r\n                },\r\n                \"memory\": \"2Gi\"\r\n            },\r\n            \"tasks\": [\r\n                {\r\n                    \"name\": \"task1\",\r\n                    \"args\": \"count=100 size=10kb\"\r\n                },\r\n                {\r\n                    \"name\": \"task2\",\r\n                    \"command\": \"/opt/lightsched/bin/second-command\",\r\n                    \"args\": \"times 1000\",\r\n                    \"envs\": [\"LD_LIBRARY_PATH=/opt/lightsched/bin\"],\r\n                    \"resources\": {\r\n                        \"cpu\": {\r\n                            \"cores\": \"2.5\",\r\n                            \"frequency\": \"2.0GHz\"\r\n                        },\r\n                        \"memory\": \"2Gi\"\r\n                    }\r\n                },\r\n                {\r\n                    \"name\": \"task3\",\r\n                    \"command\": \"/opt/lightsched/bin/last-command\",\r\n                    \"args\": \"times 2000\",\r\n                    \"envs\": [\"LD_LIBRARY_PATH=/opt/lightsched/bin\"],\r\n                    \"resources\": {\r\n                        \"cpu\": {\r\n                            \"cores\": \"3.5\",\r\n                            \"frequency\": \"2.0GHz\"\r\n                        },\r\n                        \"memory\": \"4Gi\"\r\n                    }\r\n                },\r\n                {\r\n                    \"name\": \"task4\",\r\n                    \"args\": \"count=100 size=10kb\"\r\n                },\r\n                {\r\n                    \"name\": \"task5\",\r\n                    \"command\": \"/opt/lightsched/bin/second-command\",\r\n                    \"args\": \"times 1000\",\r\n                    \"envs\": [\"LD_LIBRARY_PATH=/opt/lightsched/bin\"],\r\n                    \"resources\": {\r\n                        \"cpu\": {\r\n                            \"cores\": \"2.5\",\r\n                            \"frequency\": \"2.0GHz\"\r\n                        },\r\n                        \"memory\": \"3Gi\"\r\n                    }\r\n                },\r\n                {\r\n                    \"name\": \"task6\",\r\n                    \"command\": \"/opt/lightsched/bin/last-command\",\r\n                    \"args\": \"times 2000\",\r\n                    \"envs\": [\"LD_LIBRARY_PATH=/opt/lightsched/bin\"],\r\n                    \"resources\": {\r\n                        \"cpu\": {\r\n                            \"cores\": \"1.5\",\r\n                            \"frequency\": \"2.0GHz\"\r\n                        },\r\n                        \"memory\": \"4Gi\"\r\n                    }\r\n                }\r\n            ]\r\n        },\r\n        {\r\n            \"name\": \"second group\",\r\n            \"workdir\": \"/data\",\r\n            \"envs\": [\"license=piesat\", \"DEBUG_MODE=0\", \"LOG_LEVEL=ERROR\"],\r\n            \"resources\": {\r\n                \"cpu\": {\r\n                    \"cores\": \"2\",\r\n                    \"frequency\": \"3000MHz\"\r\n                },\r\n                \"memory\": \"4Gi\"\r\n            },\r\n            \"tasks\": [\r\n                {\r\n                    \"name\": \"task1\",\r\n                    \"command\": \"/opt/lightsched/bin/test-command\",\r\n                    \"workdir\": \"/tmp\",\r\n                    \"args\": \"GIN_MODE=release\",\r\n                    \"resources\": {\r\n                        \"cpu\": {\r\n                            \"cores\": \"2.5\",\r\n                            \"frequency\": \"2.0GHz\"\r\n                        },\r\n                        \"memory\": \"4Gi\"\r\n                    }\r\n                },\r\n                {\r\n                    \"name\": \"task2\",\r\n                    \"command\": \"/opt/lightsched/bin/second-command\",\r\n                    \"args\": \"times 1000\",\r\n                    \"envs\": [\"LD_LIBRARY_PATH=/opt/lightsched/bin\"],\r\n                    \"resources\": {\r\n                        \"gpu\": {\r\n                            \"cards\": \"1\",\r\n                            \"cores\": \"2048\",\r\n                            \"memory\": \"8Gi\",\r\n                            \"cuda\": \"10.2\"\r\n                        },\r\n                        \"memory\": \"1Gi\"\r\n                    }\r\n                },\r\n                {\r\n                    \"name\": \"task3\",\r\n                    \"command\": \"/opt/lightsched/bin/third-command\",\r\n                    \"args\": \"times 1000\",\r\n                    \"envs\": [\"LD_LIBRARY_PATH=/opt/omen/bin\"],\r\n                    \"resources\": {\r\n                        \"gpu\": {\r\n                            \"cards\": \"1\",\r\n                            \"cores\": \"2048\",\r\n                            \"memory\": \"8Gi\",\r\n                            \"cuda\": \"10.2\"\r\n                        },\r\n                        \"memory\": \"1Gi\"\r\n                    }\r\n                },\r\n                {\r\n                    \"name\": \"task4\",\r\n                    \"command\": \"/opt/lightsched/bin/test-command\",\r\n                    \"workdir\": \"/tmp\",\r\n                    \"args\": \"GIN_MODE=release\",\r\n                    \"resources\": {\r\n                        \"cpu\": {\r\n                            \"cores\": \"2.0\",\r\n                            \"frequency\": \"2.0GHz\"\r\n                        },\r\n                        \"memory\": \"4Gi\"\r\n                    }\r\n                },\r\n                {\r\n                    \"name\": \"task5\",\r\n                    \"command\": \"/opt/lightsched/bin/second-command\",\r\n                    \"args\": \"times 1000\",\r\n                    \"envs\": [\"LD_LIBRARY_PATH=/opt/lightsched/bin\"],\r\n                    \"resources\": {\r\n                        \"gpu\": {\r\n                            \"cards\": \"1\",\r\n                            \"cores\": \"2048\",\r\n                            \"memory\": \"8Gi\",\r\n                            \"cuda\": \"10.2\"\r\n                        },\r\n                        \"memory\": \"1Gi\"\r\n                    }\r\n                },\r\n                {\r\n                    \"name\": \"task6\",\r\n                    \"command\": \"/opt/lightsched/bin/third-command\",\r\n                    \"args\": \"times 1000\",\r\n                    \"envs\": [\"LD_LIBRARY_PATH=/opt/omen/bin\"],\r\n                    \"resources\": {\r\n                        \"gpu\": {\r\n                            \"cards\": \"1\",\r\n                            \"cores\": \"2048\",\r\n                            \"memory\": \"4Gi\",\r\n                            \"cuda\": \"10.2\"\r\n                        },\r\n                        \"memory\": \"4Gi\"\r\n                    }\r\n                }\r\n            ]\r\n        },\r\n        {\r\n            \"name\": \"third group\",\r\n            \"workdir\": \"/data\",\r\n            \"envs\": [\"license=piesat\", \"DEBUG_MODE=0\", \"LOG_LEVEL=ERROR\"],\r\n            \"resources\": {\r\n                \"cpu\": {\r\n                    \"cores\": \"2\",\r\n                    \"frequency\": \"3000MHz\"\r\n                },\r\n                \"memory\": \"4Gi\"\r\n            },\r\n            \"tasks\": [\r\n                {\r\n                    \"name\": \"task1\",\r\n                    \"command\": \"/opt/lightsched/bin/test-command\",\r\n                    \"workdir\": \"/tmp\",\r\n                    \"args\": \"GIN_MODE=release\"\r\n                },\r\n                {\r\n                    \"name\": \"task2\",\r\n                    \"command\": \"/opt/lightsched/bin/second-command\",\r\n                    \"args\": \"times 1000\",\r\n                    \"envs\": [\"LD_LIBRARY_PATH=/opt/lightsched/bin\"],\r\n                    \"resources\": {\r\n                        \"gpu\": {\r\n                            \"cards\": \"1\",\r\n                            \"cores\": \"2048\",\r\n                            \"memory\": \"8Gi\",\r\n                            \"cuda\": \"10.2\"\r\n                        },\r\n                        \"memory\": \"2Gi\"\r\n                    }\r\n                },\r\n                {\r\n                    \"name\": \"task3\",\r\n                    \"command\": \"/opt/lightsched/bin/third-command\",\r\n                    \"args\": \"times 1000\",\r\n                    \"envs\": [\"LD_LIBRARY_PATH=/opt/omen/bin\"],\r\n                    \"resources\": {\r\n                        \"gpu\": {\r\n                            \"cards\": \"1\",\r\n                            \"cores\": \"2048\",\r\n                            \"memory\": \"8Gi\",\r\n                            \"cuda\": \"10.2\"\r\n                        },\r\n                        \"memory\": \"1Gi\"\r\n                    }\r\n                },\r\n                {\r\n                    \"name\": \"task4\",\r\n                    \"command\": \"/opt/lightsched/bin/test-command\",\r\n                    \"workdir\": \"/tmp\",\r\n                    \"args\": \"GIN_MODE=release\",\r\n                    \"resources\": {\r\n                        \"cpu\": {\r\n                            \"cores\": \"0.7\",\r\n                            \"frequency\": \"1.7GHz\"\r\n                        },\r\n                        \"memory\": \"4Gi\"\r\n                    }\r\n                },\r\n                {\r\n                    \"name\": \"task5\",\r\n                    \"command\": \"/opt/lightsched/bin/second-command\",\r\n                    \"args\": \"times 1000\",\r\n                    \"envs\": [\"LD_LIBRARY_PATH=/opt/lightsched/bin\"],\r\n                    \"resources\": {\r\n                        \"gpu\": {\r\n                            \"cards\": \"1\",\r\n                            \"cores\": \"2048\",\r\n                            \"memory\": \"8Gi\",\r\n                            \"cuda\": \"10.2\"\r\n                        },\r\n                        \"memory\": \"4Gi\"\r\n                    }\r\n                },\r\n                {\r\n                    \"name\": \"task6\",\r\n                    \"command\": \"/opt/lightsched/bin/third-command\",\r\n                    \"args\": \"times 1000\",\r\n                    \"envs\": [\"LD_LIBRARY_PATH=/opt/omen/bin\"],\r\n                    \"resources\": {\r\n                        \"cpu\": {\r\n                            \"cores\": \"0.8\",\r\n                            \"frequency\": \"2.0GHz\"\r\n                        },\r\n                        \"memory\": \"5Gi\"\r\n                    }\r\n                }\r\n            ]\r\n        },\r\n        {\r\n            \"name\": \"last group\",\r\n            \"command\": \"/opt/lightsched/bin/example-job\",\r\n            \"envs\": [\"GPU_INDEX=0\", \"CUDA_VERSION=10.2\"],\r\n            \"resources\": {\r\n                \"cpu\": {\r\n                    \"cores\": \"2.5\",\r\n                    \"frequency\": \"2.7GHz\",\r\n                    \"min_frequency\": \"2.0GHz\"\r\n                },\r\n                \"gpu\": {\r\n                    \"cards\": \"1\",\r\n                    \"cores\": \"2048\",\r\n                    \"memory\": \"4Gi\",\r\n                    \"cuda\": \"10.2\"\r\n                },\r\n                \"memory\": \"2Gi\"\r\n            },\r\n            \"tasks\": [\r\n                {\r\n                    \"name\": \"task1\",\r\n                    \"args\": \"count=100 size=10kb\"\r\n                },\r\n                {\r\n                    \"name\": \"task2\",\r\n                    \"command\": \"/opt/lightsched/bin/second-command\",\r\n                    \"args\": \"times 1000\",\r\n                    \"envs\": [\"LD_LIBRARY_PATH=/opt/lightsched/bin\"],\r\n                    \"resources\": {\r\n                        \"cpu\": {\r\n                            \"cores\": \"3.0\",\r\n                            \"frequency\": \"6.0GHz\"\r\n                        },\r\n                        \"memory\": \"5Gi\"\r\n                    }\r\n                },\r\n                {\r\n                    \"name\": \"task3\",\r\n                    \"command\": \"/opt/lightsched/bin/last-command\",\r\n                    \"args\": \"times 2000\",\r\n                    \"envs\": [\"LD_LIBRARY_PATH=/opt/lightsched/bin\"],\r\n                    \"resources\": {\r\n                        \"cpu\": {\r\n                            \"cores\": \"2\",\r\n                            \"frequency\": \"5.0GHz\"\r\n                        },\r\n                        \"memory\": \"3Gi\"\r\n                    }\r\n                },\r\n                {\r\n                    \"name\": \"task4\",\r\n                    \"args\": \"count=100 size=10kb\"\r\n                },\r\n                {\r\n                    \"name\": \"task5\",\r\n                    \"command\": \"/opt/lightsched/bin/second-command\",\r\n                    \"args\": \"times 1000\",\r\n                    \"envs\": [\"LD_LIBRARY_PATH=/opt/lightsched/bin\"],\r\n                    \"resources\": {\r\n                        \"cpu\": {\r\n                            \"cores\": \"1.2\",\r\n                            \"frequency\": \"4GHz\"\r\n                        },\r\n                        \"memory\": \"3Gi\"\r\n                    }\r\n                },\r\n                {\r\n                    \"name\": \"task6\",\r\n                    \"command\": \"/opt/lightsched/bin/last-command\",\r\n                    \"args\": \"times 2000\",\r\n                    \"envs\": [\"LD_LIBRARY_PATH=/opt/lightsched/bin\"],\r\n                    \"resources\": {\r\n                        \"cpu\": {\r\n                            \"cores\": \"1.8\",\r\n                            \"frequency\": \"5.0GHz\"\r\n                        },\r\n                        \"memory\": \"2Gi\"\r\n                    }\r\n                }\r\n            ]\r\n        }\r\n    ]\r\n}"
+				},
+				"url": {
+					"raw": "127.0.0.1:20516/jobs",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "20516",
+					"path": [
+						"jobs"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create Job Error",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"id\": \"x32kiu4j9sk2\",\r\n    \"name\": \"my-job\",\r\n    \"queue\": \"default\",\r\n    \"priority\": 1000,\r\n    \"labels\": {\r\n        \"app\": \"piecloud\",\r\n        \"version\": \"1.0\"\r\n    },\r\n    \"groups\": [\r\n        {\r\n            \"command\": \"/opt/lightsched/bin/example-gpu-job\",\r\n            \"labels\": {\r\n                \"author\": \"piesat\"\r\n            },\r\n            \"resources\": {\r\n                \"cpu\": {\r\n                    \"value\": 1.5,\r\n                    \"minfreq\": \"2.7GHz\"\r\n                },\r\n                \"gpu\": {\r\n                    \"value\": 2,\r\n                    \"cores\": 2048,\r\n                    \"memory\": \"4G\",\r\n                    \"cuda\": \"10.2\"\r\n                },\r\n                \"generics\": {\r\n                    \"memory\": \"4G\",\r\n                    \"disk\": \"512G\",\r\n                    \"users\": 100\r\n                }\r\n            }\r\n        },\r\n        {\r\n            \"count\": 5,\r\n            \"command\": \"/opt/lightsched/bin/example-cpu-job\",\r\n            \"workdir\": \"/data\",\r\n            \"labels\": {\r\n                \"license\": \"piesat\"\r\n            },\r\n            \"envs\": {\r\n                \"DEBUG_MODE\": \"0\",\r\n                \"LOG_LEVEL\": \"ERROR\"\r\n            },\r\n            \"resources\": {\r\n                \"cpu\": {\r\n                    \"value\": \"6.0GHz\",\r\n                    \"minfreq\": \"2.4GHz\"\r\n                },\r\n                \"generics\": {\r\n                    \"memory\": \"4G\",\r\n                    \"disk\": \"512G\"\r\n                }\r\n            }\r\n        }\r\n    ]\r\n}"
+				},
+				"url": {
+					"raw": "127.0.0.1:20516/jobs",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "20516",
+					"path": [
+						"jobs"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Heartbeat",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"addr\": \"192.168.1.111:20518\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "127.0.0.1:20517/heartbeat",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "20517",
+					"path": [
+						"heartbeat"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"protocolProfileBehavior": {}
+}
