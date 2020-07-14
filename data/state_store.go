@@ -175,7 +175,7 @@ func (m *StateStore) AddJob(job *model.Job) error {
 	return nil
 }
 
-func (m *StateStore) UpdateTasks(tasks []*model.Task) error {
+func (m *StateStore) SaveTasks(tasks []*model.Task) error {
 	count := len(tasks)
 	index := 0
 	p := &index
@@ -184,5 +184,16 @@ func (m *StateStore) UpdateTasks(tasks []*model.Task) error {
 		*p = *p + 1
 		return eof, tasks[*p-1].ID, tasks[*p-1]
 	})
+	return nil
+}
+
+func (m *StateStore) UpdateTaskStatus(id string, state model.TaskState, progress int, exit int, err string) error {
+	jobid, gindex, tindex := model.ParseTaskID(id)
+	if job, ok := m.jobMap[jobid]; !ok {
+		log.Printf("No job identified by \"%s\" found while updating task status\n", jobid)
+	} else {
+		task := job.Groups[gindex].Tasks[tindex]
+		fmt.Printf(task.ID)
+	}
 	return nil
 }

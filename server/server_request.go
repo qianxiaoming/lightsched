@@ -75,3 +75,18 @@ func (svc *APIServer) requestRegisterNode(ip string, req *message.RegisterNode) 
 	svc.setScheduleFlag()
 	return nil
 }
+
+func (svc *APIServer) requestUpdateTasks(updates []*message.TaskStatus) {
+	svc.state.Lock()
+	defer svc.state.Unlock()
+	reschedule := false
+	for _, update := range updates {
+		svc.state.UpdateTaskStatus(update.ID, update.State, update.Progress, update.ExitCode, update.Error)
+		if model.IsFinishState(update.State) {
+			reschedule = true
+		}
+	}
+	if reschedule {
+		svc.setScheduleFlag()
+	}
+}

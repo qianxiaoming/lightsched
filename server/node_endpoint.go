@@ -56,6 +56,10 @@ func (e *HeartbeatEndpoint) registerRoute() {
 			} else {
 				c.JSON(http.StatusOK, msgs)
 			}
+			// 更新上报的Task状态
+			if len(hb.Payload) != 0 {
+				go e.server.requestUpdateTasks(hb.Payload)
+			}
 		} else {
 			responseError(http.StatusBadRequest, "Parse request failed: %v", err, c)
 		}

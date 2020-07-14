@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -29,6 +30,11 @@ const (
 	// TaskTerminated 任务被取消
 	TaskTerminated
 )
+
+// IsFinishState 判断Task的状态是否表示已经运行结束
+func IsFinishState(state TaskState) bool {
+	return state == TaskCompleted || state == TaskFailed || state == TaskAborted || state == TaskTerminated
+}
 
 // TaskSpec 指定任务的执行信息
 type TaskSpec struct {
@@ -103,9 +109,11 @@ func NewTaskWithSpec(group *TaskGroup, id int, spec *TaskSpec) *Task {
 }
 
 // ParseTaskID 解析Task的完整编号，分别返回Job, TaskGroup和Task的编号
-func ParseTaskID(id string) (string, string, string) {
+func ParseTaskID(id string) (string, int, int) {
 	ids := strings.Split(id, ".")
-	return ids[0], ids[1], ids[2]
+	group, _ := strconv.Atoi(ids[1])
+	task, _ := strconv.Atoi(ids[2])
+	return ids[0], group, task
 }
 
 // TaskGroupSpec 表示指定任务组的执行信息，其中包含多个任务描述。

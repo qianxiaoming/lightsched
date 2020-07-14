@@ -6,8 +6,8 @@ import (
 	"sort"
 	"sync/atomic"
 
-	"github.com/qianxiaoming/lightsched/model"
 	"github.com/qianxiaoming/lightsched/message"
+	"github.com/qianxiaoming/lightsched/model"
 )
 
 // scheduleRecord 表示可调度的节点
@@ -197,7 +197,7 @@ func (svc *APIServer) runScheduleCycle() {
 		updates = append(updates, record.task)
 	}
 	// 更新数据库中Task的状态
-	if err := svc.state.UpdateTasks(updates); err != nil {
+	if err := svc.state.SaveTasks(updates); err != nil {
 		log.Printf("Unable to save tasks into database: %v", err)
 	}
 
