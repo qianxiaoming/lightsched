@@ -2,10 +2,14 @@ package node
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os/exec"
+	"strings"
 	"syscall"
 
 	"github.com/qianxiaoming/lightsched/message"
@@ -41,6 +45,7 @@ func (node *NodeServer) runExecuteTask(msg message.JSON) {
 		}
 		node.notifyTaskStatus(task.ID, model.TaskExecuting, cmd.Process.Pid, 0, 0, "")
 
+		var logs strings.Builder
 		progress := 0
 		reader := bufio.NewReader(stdout)
 		for {
@@ -48,8 +53,12 @@ func (node *NodeServer) runExecuteTask(msg message.JSON) {
 			if err != nil || io.EOF == err {
 				break
 			}
-			// TODO
-			log.Println(">>>>", line)
+			// 记录任务程序的输出
+			if strings.HasPrefix(line, "[PROGRESS]") {
+			} else if strings.HasPrefix(line, "[ERROR]") {
+			} else {
+				logs.WriteString(line)
+			}
 		}
 		if err := cmd.Wait(); err != nil {
 			if exit, ok := err.(*exec.ExitError); ok {
@@ -64,6 +73,13 @@ func (node *NodeServer) runExecuteTask(msg message.JSON) {
 		} else {
 			log.Printf("Task(%s) program exit successfully\n", task.ID)
 			node.notifyTaskStatus(task.ID, model.TaskCompleted, 0, progress, 0, "")
+		}
+		// 将日志发送给API Server
+		if logs.Len() > 0 {
+			url := fmt.Sprintf(node.config.logURL, task.ID)
+			if _, err := http.Post(url, "text/plain", bytes.NewReader([]byte(logs.String()))); err != nil {
+				log.Printf("Unable to post logs for task %s: %v\n", task.ID, err)
+			}
 		}
 	}
 }

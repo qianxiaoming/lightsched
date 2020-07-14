@@ -20,29 +20,27 @@ func responseError(code int, format string, err error, c *gin.Context) {
 }
 
 // JobEndpoint 是Job资源对象的RESTful API实现接口
-type JobEndpoint struct {
-	server *APIServer
-}
+type JobEndpoint struct{}
 
-func (e *JobEndpoint) registerRoute() {
-	e.server.restRouter.GET(e.restPrefix(), func(c *gin.Context) {
+func (e JobEndpoint) registerRoute() {
+	apiserver.restRouter.GET(e.restPrefix(), func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"jobs": [...]string{"001", "002", "003"},
 		})
 	})
-	e.server.restRouter.POST(e.restPrefix(), e.createJob)
-	e.server.restRouter.DELETE(e.restPrefix()+"/:id", e.deleteJob)
+	apiserver.restRouter.POST(e.restPrefix(), e.createJob)
+	apiserver.restRouter.DELETE(e.restPrefix()+"/:id", e.deleteJob)
 }
 
-func (e *JobEndpoint) restPrefix() string {
+func (e JobEndpoint) restPrefix() string {
 	return "/jobs"
 }
 
-func (e *JobEndpoint) createJob(c *gin.Context) {
+func (e JobEndpoint) createJob(c *gin.Context) {
 	spec := &model.JobSpec{}
 	if err := c.BindJSON(spec); err == nil {
 		log.Printf("Request to create job \"%s\"(%s) in queue \"%s\" with %d task group(s)...\n", spec.Name, spec.ID, spec.Queue, len(spec.GroupSpecs))
-		err = e.server.requestCreateJob(spec)
+		err = apiserver.requestCreateJob(spec)
 		if err == nil {
 			c.JSON(http.StatusCreated, gin.H{"id": spec.ID})
 		} else {
@@ -53,58 +51,52 @@ func (e *JobEndpoint) createJob(c *gin.Context) {
 	}
 }
 
-func (e *JobEndpoint) deleteJob(c *gin.Context) {
+func (e JobEndpoint) deleteJob(c *gin.Context) {
 	id := c.Params.ByName("id")
 	c.JSON(http.StatusOK, gin.H{"job": id})
 }
 
 // TaskEndpoint 是Task资源对象的RESTful API实现接口
-type TaskEndpoint struct {
-	server *APIServer
-}
+type TaskEndpoint struct{}
 
-func (e *TaskEndpoint) registerRoute() {
-	e.server.restRouter.GET(e.restPrefix(), func(c *gin.Context) {
+func (e TaskEndpoint) registerRoute() {
+	apiserver.restRouter.GET(e.restPrefix(), func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"tasks": [...]string{"t001", "t002", "t003"},
 		})
 	})
 }
 
-func (e *TaskEndpoint) restPrefix() string {
+func (e TaskEndpoint) restPrefix() string {
 	return "/tasks"
 }
 
 // QueueEndpoint 是Queue资源对象的RESTful API实现接口
-type QueueEndpoint struct {
-	server *APIServer
-}
+type QueueEndpoint struct{}
 
-func (e *QueueEndpoint) registerRoute() {
-	e.server.restRouter.GET(e.restPrefix(), func(c *gin.Context) {
+func (e QueueEndpoint) registerRoute() {
+	apiserver.restRouter.GET(e.restPrefix(), func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"tasks": [...]string{"t001", "t002", "t003"},
 		})
 	})
 }
 
-func (e *QueueEndpoint) restPrefix() string {
+func (e QueueEndpoint) restPrefix() string {
 	return "/queues"
 }
 
 // NodeEndpoint 是Node资源对象的RESTful API实现接口
-type NodeEndpoint struct {
-	server *APIServer
-}
+type NodeEndpoint struct{}
 
-func (e *NodeEndpoint) registerRoute() {
-	e.server.restRouter.GET(e.restPrefix(), func(c *gin.Context) {
+func (e NodeEndpoint) registerRoute() {
+	apiserver.restRouter.GET(e.restPrefix(), func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"tasks": [...]string{"t001", "t002", "t003"},
 		})
 	})
 }
 
-func (e *NodeEndpoint) restPrefix() string {
+func (e NodeEndpoint) restPrefix() string {
 	return "/nodes"
 }

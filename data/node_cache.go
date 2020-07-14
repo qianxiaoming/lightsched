@@ -91,6 +91,9 @@ func (cache *NodeCache) PeriodicUpdate(name string, cpu float64, mem float64) []
 	cache.buckets[index].Lock()
 	defer cache.buckets[index].Unlock()
 	// 更新节点的时间戳及状态信息
+	if cache.buckets[index].periodics == nil {
+		return nil
+	}
 	if update, ok := cache.buckets[index].periodics[name]; !ok {
 		update = &NodePeriodic{
 			timestamp: time.Now(),

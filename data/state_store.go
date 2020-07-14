@@ -193,7 +193,17 @@ func (m *StateStore) UpdateTaskStatus(id string, state model.TaskState, progress
 		log.Printf("No job identified by \"%s\" found while updating task status\n", jobid)
 	} else {
 		task := job.Groups[gindex].Tasks[tindex]
-		fmt.Printf(task.ID)
+		task.State = state
+		task.Progress = progress
+		task.ExitCode = exit
+		task.Error = err
+		if task.State == model.TaskExecuting {
+			task.StartTime = time.Now()
+		} else if model.IsFinishState(state) {
+			task.FinishTime = time.Now()
+
+		}
+		m.boltDB.putJSON("task", task.ID, task)
 	}
 	return nil
 }

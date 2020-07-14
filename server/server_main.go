@@ -48,6 +48,8 @@ type APIServer struct {
 	nodeEndpoints map[string]HTTPEndpoint
 }
 
+var apiserver *APIServer
+
 // NewAPIServer 用以创建和初始化API Server实例
 func NewAPIServer() *APIServer {
 	schedLog := true // false
@@ -56,7 +58,7 @@ func NewAPIServer() *APIServer {
 	}
 	dataPath, _ := filepath.Abs("cluster")
 	logPath, _ := filepath.Abs("log")
-	return &APIServer{
+	apiserver = &APIServer{
 		config: Config{
 			address:  "",
 			restPort: constant.DefaultRestPort,
@@ -72,6 +74,7 @@ func NewAPIServer() *APIServer {
 		restEndpoints: make(map[string]HTTPEndpoint),
 		nodeEndpoints: make(map[string]HTTPEndpoint),
 	}
+	return apiserver
 }
 
 // Run 是API Server的主运行逻辑，返回时服务即结束运行
@@ -169,13 +172,13 @@ func (svc *APIServer) registerRestEndpoint(router *gin.Engine) {
 		endpoint.registerRoute()
 	}
 	// 绑定/jobs相关路径处理
-	registerEndpoint(&JobEndpoint{server: svc})
+	registerEndpoint(&JobEndpoint{})
 	// 绑定/tasks相关路径处理
-	registerEndpoint(&TaskEndpoint{server: svc})
+	registerEndpoint(&TaskEndpoint{})
 	// 绑定/queues相关路径处理
-	registerEndpoint(&QueueEndpoint{server: svc})
+	registerEndpoint(&QueueEndpoint{})
 	// 绑定/nodes相关路径处理
-	registerEndpoint(&NodeEndpoint{server: svc})
+	registerEndpoint(&NodeEndpoint{})
 }
 
 func (svc *APIServer) registerNodeEndpoint(router *gin.Engine) {
@@ -187,6 +190,7 @@ func (svc *APIServer) registerNodeEndpoint(router *gin.Engine) {
 		endpoint.registerRoute()
 	}
 	// 绑定/heartbeat相关路径处理
-	registerEndpoint(&HeartbeatEndpoint{server: svc})
-	registerEndpoint(&NodeRegisterEndpoint{server: svc})
+	registerEndpoint(&HeartbeatEndpoint{})
+	registerEndpoint(&NodeRegisterEndpoint{})
+	registerEndpoint(&TaskLogEndpoint{})
 }

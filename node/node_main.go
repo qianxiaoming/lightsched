@@ -30,6 +30,7 @@ type Config struct {
 	hostname  string
 	heartbeat time.Duration
 	logPath   string
+	logURL    string
 }
 
 type Heartbeat struct {
@@ -69,6 +70,7 @@ func NewNodeServer(apiserver string, hostname string) *NodeServer {
 			hostname:  hostname,
 			heartbeat: time.Second * 2,
 			logPath:   logPath,
+			logURL:    "http://" + apiserver + "/tasks/%s/log",
 		},
 		state: model.NodeUnknown,
 		heartbeat: Heartbeat{
@@ -76,7 +78,8 @@ func NewNodeServer(apiserver string, hostname string) *NodeServer {
 			url:     "http://" + apiserver + "/heartbeat",
 			payload: make(map[string]*message.TaskStatus),
 		},
-		update: make(chan *message.TaskStatus, 32),
+		executings: make(map[string]int),
+		update:     make(chan *message.TaskStatus, 32),
 	}
 }
 
