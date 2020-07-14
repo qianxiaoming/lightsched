@@ -32,6 +32,10 @@ func (node *NodeServer) sendHeartbeat() error {
 	request, _ := json.Marshal(hb)
 	if resp, err := http.Post(node.heartbeat.url, "application/json", bytes.NewReader(request)); err != nil {
 		log.Printf("Send heartbeat failed: %v\n", err)
+		// 心跳发送失败时需要恢复原来的待发送信息
+		for _, status := range payload {
+			node.heartbeat.payload[status.ID] = status
+		}
 		return err
 	} else {
 		defer resp.Body.Close()
