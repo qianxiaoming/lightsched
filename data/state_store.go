@@ -112,6 +112,8 @@ func (m *StateStore) loadFromDatabase() error {
 	}
 	log.Printf("%d job queue(s) loaded", len(m.jobQueues))
 
+	// 加载所有Job信息
+
 	log.Printf("Server data loaded")
 	return err
 }
@@ -263,7 +265,7 @@ func (m *StateStore) UpdateTaskStatus(id string, state model.TaskState, progress
 			// 仅在Task的状态发生变化时才保存
 			m.boltDB.putJSON("task", task.ID, task)
 			if model.IsFinishState(task.State) {
-				log.Printf("  Task %s is set to \"%s\" with exit code %d by node %s", id, model.TaskStateString(task.State), exit, task.NodeName)
+				log.Printf("  Task %s is set to \"%s\" with exit code %d by node %s: %s", id, model.TaskStateString(task.State), exit, task.NodeName, err)
 			} else {
 				log.Printf("  Task %s is set to \"%s\" by node %s", id, model.TaskStateString(task.State), task.NodeName)
 			}

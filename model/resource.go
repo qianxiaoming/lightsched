@@ -91,11 +91,9 @@ func (res *ResourceSet) SatisfiedWith(other *ResourceSet) (bool, string, interfa
 
 // Consume 消耗指定的资源
 func (res *ResourceSet) Consume(other *ResourceSet) {
-	res.CPU.Cores = res.CPU.Cores - other.CPU.Cores
-	if res.CPU.Cores < 0.001 {
+	res.CPU.Cores = float32(int(res.CPU.Cores*10.0)-int(other.CPU.Cores*10.0)) / 10.0
+	if res.CPU.Cores < 0.01 {
 		res.CPU.Cores = 0.0
-	} else {
-		res.CPU.Cores = float32(int32(res.CPU.Cores*1000)) / 1000.0
 	}
 	res.CPU.Frequency = res.CPU.Frequency - other.CPU.Frequency
 	if res.CPU.Frequency <= 0 {
@@ -118,7 +116,7 @@ func (res *ResourceSet) Consume(other *ResourceSet) {
 
 // GiveBack 归还指定的资源
 func (res *ResourceSet) GiveBack(other *ResourceSet) {
-	res.CPU.Cores = float32(int((res.CPU.Cores+other.CPU.Cores+0.0005)*1000.0)) / 1000.0
+	res.CPU.Cores = float32(int(res.CPU.Cores*10.0)+int(other.CPU.Cores*10.0)) / 10.0
 	res.CPU.Frequency = res.CPU.Frequency + other.CPU.Frequency
 	res.Memory = res.Memory + other.Memory
 	if other.GPU.Cards > 0 {
@@ -156,7 +154,7 @@ func NewResourceSetWithSpec(spec *ResourceSpec) *ResourceSet {
 				res.CPU.Cores = DefaultResourceSet.CPU.Cores
 				log.Printf("Unable to pares the number of cores of CPU resource: %v", err)
 			} else {
-				res.CPU.Cores = float32(cores)
+				res.CPU.Cores = float32(int(cores*10.0)) / 10.0
 			}
 		} else if strings.Compare(k, "frequency") == 0 {
 			v, u := util.ParseValueAndUnit(v)
