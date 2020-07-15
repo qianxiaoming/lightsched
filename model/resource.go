@@ -116,6 +116,21 @@ func (res *ResourceSet) Consume(other *ResourceSet) {
 	}
 }
 
+// GiveBack 归还指定的资源
+func (res *ResourceSet) GiveBack(other *ResourceSet) {
+	res.CPU.Cores = float32(int((res.CPU.Cores+other.CPU.Cores+0.0005)*1000.0)) / 1000.0
+	res.CPU.Frequency = res.CPU.Frequency + other.CPU.Frequency
+	res.Memory = res.Memory + other.Memory
+	if other.GPU.Cards > 0 {
+		res.GPU.Cards = res.GPU.Cards + other.GPU.Cards
+	}
+	for k, v := range res.Others {
+		if vo, ok := other.Others[k]; ok {
+			res.Others[k] = v + vo
+		}
+	}
+}
+
 // ResourceSpec 是提交作业时指定的资源信息，资源值可以包含单位
 // 使用string作为指定的值允许用户指定使用资源量的单位
 type ResourceSpec struct {

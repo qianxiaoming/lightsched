@@ -51,6 +51,14 @@ func (cache *NodeCache) GetNodes() []*model.WorkNode {
 	return cache.nodeList
 }
 
+// GetNode 返回指定名字的节点
+func (cache *NodeCache) GetNode(name string) *model.WorkNode {
+	if node, ok := cache.nodeMap[name]; ok {
+		return node
+	}
+	return nil
+}
+
 // AddNode 加入新的节点
 func (cache *NodeCache) AddNode(node *model.WorkNode) {
 	if v, ok := cache.nodeMap[node.Name]; ok {
@@ -85,14 +93,14 @@ func (cache *NodeCache) AppendNodeMessage(name string, kind string, json []byte)
 		})
 }
 
-// PeriodicUpdate 获取指定节点的消息，然后清空它的消息列表
-func (cache *NodeCache) PeriodicUpdate(name string, cpu float64, mem float64) []message.JSON {
+// PeriodicUpdate 获取指定节点的消息，然后清空它的消息列表。返回false表示未发现该节点的注册信息。
+func (cache *NodeCache) PeriodicUpdate(name string, cpu float64, mem float64) ([]message.JSON, bool) {
 	index := int(sha1.Sum([]byte(name))[0]) % NodeBucketCount
 	cache.buckets[index].Lock()
 	defer cache.buckets[index].Unlock()
 	// 更新节点的时间戳及状态信息
 	if cache.buckets[index].periodics == nil {
-		return nil
+		return nil, false
 	}
 	if update, ok := cache.buckets[index].periodics[name]; !ok {
 		update = &NodePeriodic{
@@ -110,7 +118,7 @@ func (cache *NodeCache) PeriodicUpdate(name string, cpu float64, mem float64) []
 	// 获取要发送给节点的消息
 	if msgs, ok := cache.buckets[index].messages[name]; ok {
 		cache.buckets[index].messages[name] = nil
-		return msgs
+		return msgs, true
 	}
-	return nil
+	return nil, true
 }

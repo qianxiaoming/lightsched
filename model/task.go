@@ -36,6 +36,28 @@ func IsFinishState(state TaskState) bool {
 	return state == TaskCompleted || state == TaskFailed || state == TaskAborted || state == TaskTerminated
 }
 
+func TaskStateString(state TaskState) string {
+	switch state {
+	case TaskQueued:
+		return "Queued"
+	case TaskScheduled:
+		return "Scheduled"
+	case TaskDispatching:
+		return "Dispatching"
+	case TaskExecuting:
+		return "Executing"
+	case TaskCompleted:
+		return "Completed"
+	case TaskFailed:
+		return "Failed"
+	case TaskAborted:
+		return "Aborted"
+	case TaskTerminated:
+		return "Terminated"
+	}
+	return ""
+}
+
 // TaskSpec 指定任务的执行信息
 type TaskSpec struct {
 	Name          string            `json:"name"`

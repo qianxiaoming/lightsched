@@ -175,6 +175,61 @@ func (m *StateStore) AddJob(job *model.Job) error {
 	return nil
 }
 
+func (m *StateStore) UpdateJobState(jobid string) error {
+	job := m.jobMap[jobid]
+	var total, waitting, executing, completed, failed, aborted, terminated int
+	for _, g := range job.Groups {
+		for _, t := range g.Tasks {
+			total++
+			switch t.State {
+			case model.TaskQueued, model.TaskScheduled, model.TaskDispatching:
+				waitting++
+			case model.TaskExecuting:
+				executing++
+			case model.TaskCompleted:
+				completed++
+			case model.TaskFailed:
+				failed++
+			case model.TaskAborted:
+				aborted++
+			case model.TaskTerminated:
+				terminated++
+			}
+		}
+	}
+	last := job.State
+	if completed == total {
+		job.State = model.JobCompleted
+	} else if executing > 0 {
+		if job.State != model.JobExecuting {
+			job.ExecTime = time.Now()
+		}
+		job.State = model.JobExecuting
+	} else if terminated > 0 {
+		job.State = model.JobTerminated
+		job.FinishTime = time.Now()
+	} else if aborted > 0 || failed > 0 {
+		if waitting == 0 {
+			job.State = model.JobFailed
+			if job.MaxErrors > 0 && job.MaxErrors >= aborted+failed {
+				job.State = model.JobCompleted
+			}
+			job.FinishTime = time.Now()
+		} else if job.MaxErrors > 0 && job.MaxErrors >= aborted+failed {
+			job.State = model.JobCompleted
+			job.FinishTime = time.Now()
+		}
+	}
+	if last != job.State {
+		log.Printf("  Job %s is set to \"%s\"\n", job.ID, model.JobStateString(job.State))
+	}
+	err := m.boltDB.put("job", job.ID, job.GetJSON())
+	if err != nil {
+		return fmt.Errorf("Unable to save submitted job \"%s\"(%s): %v", job.Name, job.ID, err)
+	}
+	return nil
+}
+
 func (m *StateStore) SaveTasks(tasks []*model.Task) error {
 	count := len(tasks)
 	index := 0
@@ -187,12 +242,14 @@ func (m *StateStore) SaveTasks(tasks []*model.Task) error {
 	return nil
 }
 
-func (m *StateStore) UpdateTaskStatus(id string, state model.TaskState, progress int, exit int, err string) error {
+func (m *StateStore) UpdateTaskStatus(id string, state model.TaskState, progress int, exit int, err string) *model.Task {
 	jobid, gindex, tindex := model.ParseTaskID(id)
 	if job, ok := m.jobMap[jobid]; !ok {
 		log.Printf("No job identified by \"%s\" found while updating task status\n", jobid)
+		return nil
 	} else {
 		task := job.Groups[gindex].Tasks[tindex]
+		last := task.State
 		task.State = state
 		task.Progress = progress
 		task.ExitCode = exit
@@ -201,9 +258,22 @@ func (m *StateStore) UpdateTaskStatus(id string, state model.TaskState, progress
 			task.StartTime = time.Now()
 		} else if model.IsFinishState(state) {
 			task.FinishTime = time.Now()
-
 		}
-		m.boltDB.putJSON("task", task.ID, task)
+		if last != task.State {
+			// 仅在Task的状态发生变化时才保存
+			m.boltDB.putJSON("task", task.ID, task)
+			if model.IsFinishState(task.State) {
+				log.Printf("  Task %s is set to \"%s\" with exit code %d by node %s", id, model.TaskStateString(task.State), exit, task.NodeName)
+			} else {
+				log.Printf("  Task %s is set to \"%s\" by node %s", id, model.TaskStateString(task.State), task.NodeName)
+			}
+			// 当Task是执行状态并且Job也是执行状态时，无需更新Job的状态（此时可能仅仅是Task的进度刷新）
+			if task.State != model.TaskExecuting || job.State != model.JobExecuting {
+				if err := m.UpdateJobState(jobid); err != nil {
+					log.Printf("Failed to update the state of job \"%s\": %v\n", jobid, err)
+				}
+			}
+		}
+		return task
 	}
-	return nil
 }

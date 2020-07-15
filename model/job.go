@@ -24,6 +24,24 @@ const (
 	JobTerminated
 )
 
+func JobStateString(state JobState) string {
+	switch state {
+	case JobQueued:
+		return "Queued"
+	case JobExecuting:
+		return "Executing"
+	case JobHalted:
+		return "Halted"
+	case JobCompleted:
+		return "Completed"
+	case JobFailed:
+		return "Failed"
+	case JobTerminated:
+		return "Terminated"
+	}
+	return ""
+}
+
 // JobSpec 表示提交的作业的基本信息，包含多个任务组的描述。
 type JobSpec struct {
 	ID          string            `json:"id,omitempty"`

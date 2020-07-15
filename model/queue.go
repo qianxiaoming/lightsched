@@ -1,6 +1,9 @@
 package model
 
-import "sort"
+import (
+	"log"
+	"sort"
+)
 
 // JobQueueSpec 是描述了JobQueue的信息
 type JobQueueSpec struct {
@@ -48,6 +51,7 @@ func (queue *JobQueue) GetSchedulableJobs() map[int][]*Job {
 	jobs := make(map[int][]*Job, 1)
 	for _, j := range queue.Jobs {
 		if !j.IsSchedulable() {
+			log.Printf("Job %s with state \"%s\" cannot be scheduled\n", j.Name, JobStateString(j.State))
 			continue
 		}
 		if _, ok := jobs[j.Priority]; !ok {

@@ -51,11 +51,16 @@ func (e HeartbeatEndpoint) registerRoute() {
 	apiserver.nodeRouter.POST(e.restPrefix(), func(c *gin.Context) {
 		hb := &message.Heartbeat{}
 		if err := c.BindJSON(hb); err == nil {
-			msgs := apiserver.nodes.PeriodicUpdate(hb.Name, hb.CPU, hb.Memory)
+			msgs, found := apiserver.nodes.PeriodicUpdate(hb.Name, hb.CPU, hb.Memory)
+			status := http.StatusOK
+			if !found {
+				// TODO 通知节点需要重新注册自己
+				status = http.StatusNotFound
+			}
 			if msgs == nil {
-				c.Status(http.StatusOK)
+				c.Status(status)
 			} else {
-				c.JSON(http.StatusOK, msgs)
+				c.JSON(status, msgs)
 			}
 			// 更新上报的Task状态
 			if len(hb.Payload) != 0 {
