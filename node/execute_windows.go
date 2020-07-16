@@ -16,11 +16,18 @@ import (
 	"github.com/qianxiaoming/lightsched/model"
 )
 
-func (node *NodeServer) runExecuteTask(msg message.JSON) {
+func (node *NodeServer) runExecuteTask(msg message.JSON, terminated map[string]bool) {
 	task := &model.Task{}
 	if err := json.Unmarshal(msg.Content, task); err != nil {
 		log.Printf("NOTICE: Unable to unmarshal task json and just ignore it now: %v\n", err)
 	} else {
+		jobid, _, _ := model.ParseTaskID(task.ID)
+		if _, ok := terminated[jobid]; ok {
+			// 该Task所属的Job已经被终止
+			log.Printf("Task(%s) program will not be executed\n", task.ID)
+			node.notifyTaskStatus(task.ID, model.TaskTerminated, nil, 0, 1, "")
+			return
+		}
 		log.Printf("Execute task(%s) program: %s %s\n", task.ID, task.Command, task.Args)
 		cmd := exec.Command(task.Command, task.Args)
 		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
@@ -66,7 +73,7 @@ func (node *NodeServer) runExecuteTask(msg message.JSON) {
 					log.Printf("Task(%s) program exit successfully\n", task.ID)
 					node.notifyTaskStatus(task.ID, model.TaskCompleted, nil, progress, 0, "")
 				} else {
-					log.Printf("Task(%s) program exit error: %d %v\n", task.ID, exit.ExitCode(), err)
+					log.Printf("Task(%s) program exit error: %v\n", task.ID, err)
 					node.notifyTaskStatus(task.ID, model.TaskFailed, nil, progress, exit.ExitCode(), exit.Error())
 				}
 			}

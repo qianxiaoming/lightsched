@@ -33,7 +33,7 @@ type Config struct {
 	logURL    string
 }
 
-type TaskProcess struct {
+type TaskUpdate struct {
 	status  *message.TaskStatus
 	process *os.Process
 }
@@ -44,6 +44,11 @@ type Heartbeat struct {
 	payload map[string]*message.TaskStatus
 }
 
+type TaskProcess struct {
+	process *os.Process
+	killed  bool
+}
+
 // NodeServer 是集群的工作节点服务。每个执行任务的节点上部署1个NodeServer。
 type NodeServer struct {
 	config     Config
@@ -52,8 +57,8 @@ type NodeServer struct {
 	labels     map[string]string
 	state      model.NodeState
 	heartbeat  Heartbeat
-	executings map[string]*os.Process // 正在运行的Task信息
-	update     chan *TaskProcess
+	executings map[string]TaskProcess // 正在运行的Task信息
+	update     chan *TaskUpdate
 }
 
 // NewNodeServer 创建1个NodeServer实例
@@ -83,8 +88,8 @@ func NewNodeServer(apiserver string, hostname string) *NodeServer {
 			url:     "http://" + apiserver + "/heartbeat",
 			payload: make(map[string]*message.TaskStatus),
 		},
-		executings: make(map[string]*os.Process),
-		update:     make(chan *TaskProcess, 32),
+		executings: make(map[string]TaskProcess),
+		update:     make(chan *TaskUpdate, 32),
 	}
 }
 
@@ -124,21 +129,24 @@ func (node *NodeServer) Run(cpustr string, gpustr string, memorystr string, labe
 		select {
 		case <-quit:
 			stopped = true
-		case proc := <-node.update:
+		case update := <-node.update:
 			// 更新Task的最新状态。状态信息将在心跳中统一发给服务端。
-			if last, ok := node.heartbeat.payload[proc.status.ID]; ok && last.State == proc.status.State {
-				last.Progress = proc.status.Progress
-				last.Error = proc.status.Error
+			if last, ok := node.heartbeat.payload[update.status.ID]; ok && last.State == update.status.State {
+				last.Progress = update.status.Progress
+				last.Error = update.status.Error
 			} else {
-				node.heartbeat.payload[proc.status.ID] = proc.status
+				node.heartbeat.payload[update.status.ID] = update.status
 			}
 			// 检查是否在“正在运行任务”列表中
-			if _, ok := node.executings[proc.status.ID]; ok {
-				if proc.status.State != model.TaskExecuting {
-					delete(node.executings, proc.status.ID)
+			if proc, ok := node.executings[update.status.ID]; ok {
+				if update.status.State != model.TaskExecuting {
+					if update.status.State == model.TaskFailed && proc.killed {
+						node.heartbeat.payload[update.status.ID].State = model.TaskTerminated
+					}
+					delete(node.executings, update.status.ID)
 				}
-			} else if proc.status.State == model.TaskExecuting && proc.process != nil {
-				node.executings[proc.status.ID] = proc.process
+			} else if update.status.State == model.TaskExecuting && update.process != nil {
+				node.executings[update.status.ID] = TaskProcess{update.process, false}
 			}
 		case <-timer.C:
 			timeout := node.config.heartbeat
@@ -170,7 +178,7 @@ func (node *NodeServer) Run(cpustr string, gpustr string, memorystr string, labe
 }
 
 func (node *NodeServer) notifyTaskStatus(id string, state model.TaskState, process *os.Process, progress, exit int, err string) {
-	node.update <- &TaskProcess{
+	node.update <- &TaskUpdate{
 		status: &message.TaskStatus{
 			ID:       id,
 			State:    state,

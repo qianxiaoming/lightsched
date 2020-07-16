@@ -95,7 +95,7 @@ func NewTaskWithSpec(group *TaskGroup, id int, spec *TaskSpec) *Task {
 		ID:        fmt.Sprintf("%s.%d", group.ID, id),
 		Name:      spec.Name,
 		Envs:      spec.Envs,
-		Command:   spec.Command,
+		Command:   strings.ReplaceAll(spec.Command, "\\", "/"),
 		Args:      spec.Args,
 		WorkDir:   spec.WorkDir,
 		Labels:    spec.Labels,
@@ -169,7 +169,7 @@ func NewTaskGroupWithSpec(id string, spec *TaskGroupSpec) *TaskGroup {
 	group := &TaskGroup{
 		ID:          id,
 		Name:        spec.Name,
-		Command:     spec.Command,
+		Command:     strings.ReplaceAll(spec.Command, "\\", "/"),
 		WorkDir:     spec.WorkDir,
 		Envs:        spec.Envs,
 		Labels:      spec.Labels,

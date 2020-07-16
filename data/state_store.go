@@ -214,10 +214,10 @@ func (m *StateStore) UpdateJobState(jobid string) error {
 	}
 	if job.RefreshState() {
 		log.Printf("  Job %s is set to \"%s\"\n", job.ID, model.JobStateString(job.State))
-	}
-	err := m.boltDB.put("job", job.ID, job.GetJSON())
-	if err != nil {
-		return fmt.Errorf("Unable to save job \"%s\"(%s): %v", job.Name, job.ID, err)
+		err := m.boltDB.put("job", job.ID, job.GetJSON())
+		if err != nil {
+			return fmt.Errorf("Unable to save job \"%s\"(%s): %v", job.Name, job.ID, err)
+		}
 	}
 	return nil
 }
@@ -268,9 +268,9 @@ func (m *StateStore) UpdateTaskStatus(id string, state model.TaskState, progress
 			// 仅在Task的状态发生变化时才保存
 			m.boltDB.putJSON("task", task.ID, task)
 			if model.IsFinishState(task.State) {
-				log.Printf("  Task %s is set to \"%s\" with exit code %d by node %s: %s", id, model.TaskStateString(task.State), exit, task.NodeName, err)
+				log.Printf("  Task %s is reported as \"%s\" with exit code %d by node %s: %s", id, model.TaskStateString(task.State), exit, task.NodeName, err)
 			} else {
-				log.Printf("  Task %s is set to \"%s\" by node %s", id, model.TaskStateString(task.State), task.NodeName)
+				log.Printf("  Task %s is reported as \"%s\" by node %s", id, model.TaskStateString(task.State), task.NodeName)
 			}
 			// 当Task是执行状态并且Job也是执行状态时，无需更新Job的状态（此时可能仅仅是Task的进度刷新）
 			if task.State != model.TaskExecuting || job.State != model.JobExecuting {

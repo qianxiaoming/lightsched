@@ -55,25 +55,40 @@ func (node *NodeServer) sendHeartbeat() error {
 }
 
 func (node *NodeServer) runServerMessages(msgs []message.JSON) {
+	// 确定此次消息中包含的终止Job的消息
+	var terminated map[string]bool
+	for _, msg := range msgs {
+		if msg.Kind != message.KindTerminateJob {
+			continue
+		}
+		jobid := &message.JobID{}
+		if err := json.Unmarshal(msg.Content, jobid); err != nil {
+			log.Printf("NOTICE: Unable to unmarshal jobid and just ignore it now: %v\n", err)
+			continue
+		}
+		if terminated == nil {
+			terminated = make(map[string]bool)
+		}
+		terminated[jobid.ID] = true
+	}
+
 	for _, msg := range msgs {
 		switch msg.Kind {
 		case message.KindScheduleTask:
-			go node.runExecuteTask(msg)
-		case message.KindTerminateJob:
-			jobid := &message.JobID{}
-			if err := json.Unmarshal(msg.Content, jobid); err != nil {
-				log.Printf("NOTICE: Unable to unmarshal jobid and just ignore it now: %v\n", err)
-				return
-			}
-			log.Printf("Terminating job %s...\n", jobid.ID)
-			for id, proc := range node.executings {
-				if strings.HasPrefix(id, jobid.ID) && proc != nil {
-					log.Printf("  Killing task(%s) process %d...\n", id, proc.Pid)
-					if err := proc.Kill(); err != nil {
-						log.Printf("Cannot kill the task process of Job(%s): %v\n", jobid, err)
-					} else {
-						log.Println("  Process killed")
-					}
+			go node.runExecuteTask(msg, terminated)
+		}
+	}
+
+	for jobid := range terminated {
+		log.Printf("Terminating job %s...\n", jobid)
+		for id, proc := range node.executings {
+			if strings.HasPrefix(id, jobid) && proc.process != nil {
+				log.Printf("  Killing task(%s) process %d...\n", id, proc.process.Pid)
+				if err := proc.process.Kill(); err != nil {
+					log.Printf("Cannot kill the task process of Job(%s): %v\n", jobid, err)
+				} else {
+					node.executings[id] = TaskProcess{proc.process, true}
+					log.Println("  Process killed")
 				}
 			}
 		}
