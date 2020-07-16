@@ -162,13 +162,19 @@ func (job *Job) IsSchedulable() bool {
 	return job.Schedulable && (job.State == JobQueued || job.State == JobExecuting)
 }
 
-type JobSlice []*Job
+// GeneralJobSlice 是Job通常情况下的排序方式
+type GeneralJobSlice []*Job
 
-func (s JobSlice) Len() int {
+func (s GeneralJobSlice) Len() int {
 	return len(s)
 }
 
-func (s JobSlice) Less(i, j int) bool {
+func (s GeneralJobSlice) Less(i, j int) bool {
+	if s[i].IsSchedulable() && !s[j].IsSchedulable() {
+		return true
+	} else if !s[i].IsSchedulable() && s[j].IsSchedulable() {
+		return false
+	}
 	if s[i].Priority > s[j].Priority {
 		return true
 	} else if s[i].Priority < s[j].Priority {
@@ -179,9 +185,9 @@ func (s JobSlice) Less(i, j int) bool {
 	} else if s[i].SubmitTime.After(s[j].SubmitTime) {
 		return false
 	}
-	return s[i].TotalTasks < s[j].TotalTasks
+	return s[i].Name < s[j].Name
 }
 
-func (s JobSlice) Swap(i, j int) {
+func (s GeneralJobSlice) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }

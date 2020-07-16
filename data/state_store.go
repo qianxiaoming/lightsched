@@ -113,6 +113,36 @@ func (m *StateStore) loadFromDatabase() error {
 	log.Printf("%d job queue(s) loaded", len(m.jobQueues))
 
 	// 加载所有Job信息
+	if err := m.boltDB.getBucketJSON("job", func() interface{} {
+		return &model.Job{}
+	}, func(v interface{}) {
+		if job, ok := v.(*model.Job); ok {
+			m.jobMap[job.ID] = job
+		}
+	}); err != nil {
+		return err
+	}
+	// 排序所有Job
+	m.jobList = make([]*model.Job, 0, len(m.jobMap))
+	for _, v := range m.jobMap {
+		m.jobList = append(m.jobList, v)
+	}
+	sort.Sort(model.GeneralJobSlice(m.jobList))
+	log.Printf("%d job(s) loaded", len(m.jobList))
+
+	// 加载所有Task信息
+	if err := m.boltDB.getBucketJSON("task", func() interface{} {
+		return &model.Task{}
+	}, func(v interface{}) {
+		if task, ok := v.(*model.Task); ok {
+			j, g, t := model.ParseTaskID(task.ID)
+			if job, ok := m.jobMap[j]; ok {
+				job.Groups[g].Tasks[t] = task
+			}
+		}
+	}); err != nil {
+		return err
+	}
 
 	log.Printf("Server data loaded")
 	return err

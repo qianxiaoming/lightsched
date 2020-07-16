@@ -26,6 +26,7 @@ type Config struct {
 	nodePort int
 	dataPath string
 	logPath  string
+	instance string
 }
 
 // HTTPEndpoint 是对不同资源对象提供HTTP API实现的接口
@@ -65,6 +66,7 @@ func NewAPIServer() *APIServer {
 			nodePort: constant.DefaultNodePort,
 			dataPath: dataPath,
 			logPath:  logPath,
+			instance: util.GenerateUUID(),
 		},
 		state:         data.NewStateStore(),
 		nodes:         data.NewNodeCache(),

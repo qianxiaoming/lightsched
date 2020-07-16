@@ -44,6 +44,30 @@ func (s JobQueueSlice) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
 
+type schedulableJobSlice []*Job
+
+func (s schedulableJobSlice) Len() int {
+	return len(s)
+}
+
+func (s schedulableJobSlice) Less(i, j int) bool {
+	if s[i].Priority > s[j].Priority {
+		return true
+	} else if s[i].Priority < s[j].Priority {
+		return false
+	}
+	if s[i].SubmitTime.Before(s[j].SubmitTime) {
+		return true
+	} else if s[i].SubmitTime.After(s[j].SubmitTime) {
+		return false
+	}
+	return s[i].TotalTasks < s[j].TotalTasks
+}
+
+func (s schedulableJobSlice) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
 // GetSchedulableJobs 获取按照优先级、时间和初次调度周期排序后的作业集合
 func (queue *JobQueue) GetSchedulableJobs() map[int][]*Job {
 	// 将可调度的Job按照优先级放到不同的队列中
@@ -58,7 +82,7 @@ func (queue *JobQueue) GetSchedulableJobs() map[int][]*Job {
 		jobs[j.Priority] = append(jobs[j.Priority], j)
 	}
 	for _, v := range jobs {
-		sort.Sort(JobSlice(v))
+		sort.Sort(schedulableJobSlice(v))
 	}
 	return jobs
 }
