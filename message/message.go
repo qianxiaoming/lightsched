@@ -4,7 +4,9 @@ import "github.com/qianxiaoming/lightsched/model"
 
 const (
 	// KindScheduleTask 调度任务执行消息
-	KindScheduleTask = "task"
+	KindScheduleTask = "ScheduleTask"
+	// KindTerminateJob 终止Job消息
+	KindTerminateJob = "TerminateJob"
 )
 
 // JSON 表示内容是JSON的消息，其中通过kind字段说明类型
@@ -25,7 +27,6 @@ type RegisterNode struct {
 type TaskStatus struct {
 	ID       string          `json:"id"`
 	State    model.TaskState `json:"state"`
-	PID      int             `json:"pid"`
 	Progress int             `json:"progress"`
 	ExitCode int             `json:"exit_code"`
 	Error    string          `json:"error,omitempty"`
@@ -37,4 +38,9 @@ type Heartbeat struct {
 	CPU     float64       `json:"cpu"`
 	Memory  float64       `json:"memory"`
 	Payload []*TaskStatus `json:"payload,omitempty"`
+}
+
+// JobID Job编号信息
+type JobID struct {
+	ID string `json:"id"`
 }

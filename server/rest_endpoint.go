@@ -29,6 +29,7 @@ func (e JobEndpoint) registerRoute() {
 		})
 	})
 	apiserver.restRouter.POST(e.restPrefix(), e.createJob)
+	apiserver.restRouter.GET(e.restPrefix()+"/:id/_terminate", e.terminateJob)
 	apiserver.restRouter.DELETE(e.restPrefix()+"/:id", e.deleteJob)
 }
 
@@ -54,6 +55,15 @@ func (e JobEndpoint) createJob(c *gin.Context) {
 func (e JobEndpoint) deleteJob(c *gin.Context) {
 	id := c.Params.ByName("id")
 	c.JSON(http.StatusOK, gin.H{"job": id})
+}
+
+func (e JobEndpoint) terminateJob(c *gin.Context) {
+	id := c.Params.ByName("id")
+	if err := apiserver.requestTerminateJob(id); err != nil {
+		responseError(http.StatusBadRequest, "Unable to terminate job: %v", err, c)
+		return
+	}
+	c.Status(http.StatusAccepted)
 }
 
 // TaskEndpoint 是Task资源对象的RESTful API实现接口

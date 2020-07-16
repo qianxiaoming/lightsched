@@ -34,16 +34,16 @@ func (node *NodeServer) runExecuteTask(msg message.JSON) {
 		stdout, err := cmd.StdoutPipe()
 		if err != nil {
 			log.Printf("Cannot get standard output pipe for task(%s): %v\n", task.ID, err)
-			node.notifyTaskStatus(task.ID, model.TaskAborted, 0, 0, 0, err.Error())
+			node.notifyTaskStatus(task.ID, model.TaskAborted, nil, 0, 0, err.Error())
 			return
 		}
 		cmd.Stderr = cmd.Stdout
 		if err := cmd.Start(); err != nil {
 			log.Printf("Cannot start program for task(%s): %v\n", task.ID, err)
-			node.notifyTaskStatus(task.ID, model.TaskAborted, 0, 0, 0, err.Error())
+			node.notifyTaskStatus(task.ID, model.TaskAborted, nil, 0, 0, err.Error())
 			return
 		}
-		node.notifyTaskStatus(task.ID, model.TaskExecuting, cmd.Process.Pid, 0, 0, "")
+		node.notifyTaskStatus(task.ID, model.TaskExecuting, cmd.Process, 0, 0, "")
 
 		var logs strings.Builder
 		progress := 0
@@ -64,15 +64,15 @@ func (node *NodeServer) runExecuteTask(msg message.JSON) {
 			if exit, ok := err.(*exec.ExitError); ok {
 				if exit.Success() {
 					log.Printf("Task(%s) program exit successfully\n", task.ID)
-					node.notifyTaskStatus(task.ID, model.TaskCompleted, 0, progress, 0, "")
+					node.notifyTaskStatus(task.ID, model.TaskCompleted, nil, progress, 0, "")
 				} else {
 					log.Printf("Task(%s) program exit error: %d %v\n", task.ID, exit.ExitCode(), err)
-					node.notifyTaskStatus(task.ID, model.TaskFailed, 0, progress, exit.ExitCode(), exit.Error())
+					node.notifyTaskStatus(task.ID, model.TaskFailed, nil, progress, exit.ExitCode(), exit.Error())
 				}
 			}
 		} else {
 			log.Printf("Task(%s) program exit successfully\n", task.ID)
-			node.notifyTaskStatus(task.ID, model.TaskCompleted, 0, progress, 0, "")
+			node.notifyTaskStatus(task.ID, model.TaskCompleted, nil, progress, 0, "")
 		}
 		// 将日志发送给API Server
 		if logs.Len() > 0 {

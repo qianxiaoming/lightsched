@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/qianxiaoming/lightsched/message"
 	"github.com/shirou/gopsutil/cpu"
@@ -58,6 +59,23 @@ func (node *NodeServer) runServerMessages(msgs []message.JSON) {
 		switch msg.Kind {
 		case message.KindScheduleTask:
 			go node.runExecuteTask(msg)
+		case message.KindTerminateJob:
+			jobid := &message.JobID{}
+			if err := json.Unmarshal(msg.Content, jobid); err != nil {
+				log.Printf("NOTICE: Unable to unmarshal jobid and just ignore it now: %v\n", err)
+				return
+			}
+			log.Printf("Terminating job %s...\n", jobid.ID)
+			for id, proc := range node.executings {
+				if strings.HasPrefix(id, jobid.ID) && proc != nil {
+					log.Printf("  Killing task(%s) process %d...\n", id, proc.Pid)
+					if err := proc.Kill(); err != nil {
+						log.Printf("Cannot kill the task process of Job(%s): %v\n", jobid, err)
+					} else {
+						log.Println("  Process killed")
+					}
+				}
+			}
 		}
 	}
 }

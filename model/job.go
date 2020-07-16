@@ -20,10 +20,13 @@ const (
 	JobCompleted
 	// JobFailed 表示Job中的失败任务数超过了设定值
 	JobFailed
+	// JobTerminating 表示Job正在被终止
+	JobTerminating
 	// JobTerminated 表示Job被强制终止
 	JobTerminated
 )
 
+// JobStateString 将Job的状态转换为字符串
 func JobStateString(state JobState) string {
 	switch state {
 	case JobQueued:
@@ -36,6 +39,8 @@ func JobStateString(state JobState) string {
 		return "Completed"
 	case JobFailed:
 		return "Failed"
+	case JobTerminating:
+		return "Terminating"
 	case JobTerminated:
 		return "Terminated"
 	}
@@ -164,6 +169,9 @@ func (job *Job) IsSchedulable() bool {
 
 // RefreshState 根据内部任务的状态确定Job的最新状态
 func (job *Job) RefreshState() bool {
+	if job.State == JobTerminated {
+		return false
+	}
 	last := job.State
 	total := job.CountTasks()
 	var waitting, executing, completed, failed, terminated int
@@ -186,19 +194,27 @@ func (job *Job) RefreshState() bool {
 	if completed == total {
 		job.State = JobCompleted
 	} else if waitting == 0 && executing == 0 {
-		if terminated > 0 {
+		if job.State == JobTerminating && terminated > 0 {
 			job.State = JobTerminated
 		} else {
-			job.State = JobFailed
-			if job.MaxErrors > 0 && job.MaxErrors >= failed {
-				job.State = JobCompleted
+			if terminated > 0 {
+				job.State = JobTerminated
+			} else {
+				job.State = JobFailed
+				if job.MaxErrors > 0 && job.MaxErrors >= failed {
+					job.State = JobCompleted
+				}
 			}
 		}
 	} else if waitting == total {
 		job.State = JobQueued
-	} else {
+	} else if job.State != JobTerminating {
 		job.State = JobExecuting
 	}
+	if job.State == JobTerminating && terminated > 0 {
+		job.State = JobTerminated
+	}
+
 	if job.State != JobQueued && job.ExecTime.IsZero() {
 		job.ExecTime = time.Now()
 	}

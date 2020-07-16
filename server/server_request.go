@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -99,4 +100,32 @@ func (svc *APIServer) requestUpdateTasks(updates []*message.TaskStatus) {
 	if reschedule {
 		svc.setScheduleFlag()
 	}
+}
+
+func (svc *APIServer) requestTerminateJob(id string) error {
+	svc.state.Lock()
+	defer svc.state.Unlock()
+	log.Printf("Terminate Job %s\n", id)
+	if err := svc.state.SetJobState(id, model.JobTerminating); err != nil {
+		return err
+	}
+	job := svc.state.GetJob(id)
+	// 确定所有运行此Job的节点名字
+	nodes := make(map[string]bool)
+	for _, g := range job.Groups {
+		for _, t := range g.Tasks {
+			if t.State != model.TaskExecuting && t.State != model.TaskDispatching && t.State != model.TaskScheduled {
+				continue
+			}
+			nodes[t.NodeName] = true
+		}
+	}
+
+	svc.nodes.Lock()
+	defer svc.nodes.Unlock()
+	for name := range nodes {
+		msg, _ := json.Marshal(&message.JobID{ID: id})
+		svc.nodes.AppendNodeMessage(name, message.KindTerminateJob, msg)
+	}
+	return nil
 }

@@ -208,13 +208,29 @@ func (m *StateStore) AddJob(job *model.Job) error {
 }
 
 func (m *StateStore) UpdateJobState(jobid string) error {
-	job := m.jobMap[jobid]
+	job := m.GetJob(jobid)
+	if job == nil {
+		return fmt.Errorf("Job identified by \"%s\" not found", jobid)
+	}
 	if job.RefreshState() {
 		log.Printf("  Job %s is set to \"%s\"\n", job.ID, model.JobStateString(job.State))
 	}
 	err := m.boltDB.put("job", job.ID, job.GetJSON())
 	if err != nil {
-		return fmt.Errorf("Unable to save submitted job \"%s\"(%s): %v", job.Name, job.ID, err)
+		return fmt.Errorf("Unable to save job \"%s\"(%s): %v", job.Name, job.ID, err)
+	}
+	return nil
+}
+
+func (m *StateStore) SetJobState(jobid string, state model.JobState) error {
+	job := m.GetJob(jobid)
+	if job == nil {
+		return fmt.Errorf("Job identified by \"%s\" not found", jobid)
+	}
+	job.State = state
+	err := m.boltDB.put("job", job.ID, job.GetJSON())
+	if err != nil {
+		return fmt.Errorf("Unable to save job \"%s\"(%s): %v", job.Name, job.ID, err)
 	}
 	return nil
 }

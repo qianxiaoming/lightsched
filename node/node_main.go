@@ -33,6 +33,11 @@ type Config struct {
 	logURL    string
 }
 
+type TaskProcess struct {
+	status  *message.TaskStatus
+	process *os.Process
+}
+
 type Heartbeat struct {
 	errors  int
 	url     string
@@ -47,8 +52,8 @@ type NodeServer struct {
 	labels     map[string]string
 	state      model.NodeState
 	heartbeat  Heartbeat
-	executings map[string]int // 正在运行的Task进程
-	update     chan *message.TaskStatus
+	executings map[string]*os.Process // 正在运行的Task信息
+	update     chan *TaskProcess
 }
 
 // NewNodeServer 创建1个NodeServer实例
@@ -78,8 +83,8 @@ func NewNodeServer(apiserver string, hostname string) *NodeServer {
 			url:     "http://" + apiserver + "/heartbeat",
 			payload: make(map[string]*message.TaskStatus),
 		},
-		executings: make(map[string]int),
-		update:     make(chan *message.TaskStatus, 32),
+		executings: make(map[string]*os.Process),
+		update:     make(chan *TaskProcess, 32),
 	}
 }
 
@@ -119,21 +124,21 @@ func (node *NodeServer) Run(cpustr string, gpustr string, memorystr string, labe
 		select {
 		case <-quit:
 			stopped = true
-		case status := <-node.update:
+		case proc := <-node.update:
 			// 更新Task的最新状态。状态信息将在心跳中统一发给服务端。
-			if last, ok := node.heartbeat.payload[status.ID]; ok && last.State == status.State {
-				last.Progress = status.Progress
-				last.Error = status.Error
+			if last, ok := node.heartbeat.payload[proc.status.ID]; ok && last.State == proc.status.State {
+				last.Progress = proc.status.Progress
+				last.Error = proc.status.Error
 			} else {
-				node.heartbeat.payload[status.ID] = status
+				node.heartbeat.payload[proc.status.ID] = proc.status
 			}
-			// 检擦是否在“正在运行任务”列表中
-			if _, ok := node.executings[status.ID]; ok {
-				if status.State != model.TaskExecuting {
-					delete(node.executings, status.ID)
+			// 检查是否在“正在运行任务”列表中
+			if _, ok := node.executings[proc.status.ID]; ok {
+				if proc.status.State != model.TaskExecuting {
+					delete(node.executings, proc.status.ID)
 				}
-			} else if status.State == model.TaskExecuting {
-				node.executings[status.ID] = status.PID
+			} else if proc.status.State == model.TaskExecuting && proc.process != nil {
+				node.executings[proc.status.ID] = proc.process
 			}
 		case <-timer.C:
 			timeout := node.config.heartbeat
@@ -164,14 +169,16 @@ func (node *NodeServer) Run(cpustr string, gpustr string, memorystr string, labe
 	return 0
 }
 
-func (node *NodeServer) notifyTaskStatus(id string, state model.TaskState, pid, progress, exit int, err string) {
-	node.update <- &message.TaskStatus{
-		ID:       id,
-		State:    state,
-		PID:      pid,
-		Progress: progress,
-		ExitCode: exit,
-		Error:    err,
+func (node *NodeServer) notifyTaskStatus(id string, state model.TaskState, process *os.Process, progress, exit int, err string) {
+	node.update <- &TaskProcess{
+		status: &message.TaskStatus{
+			ID:       id,
+			State:    state,
+			Progress: progress,
+			ExitCode: exit,
+			Error:    err,
+		},
+		process: process,
 	}
 }
 
