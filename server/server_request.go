@@ -41,7 +41,7 @@ func (svc *APIServer) requestCreateJob(spec *model.JobSpec) error {
 	if err := util.MakeDirAll(dir); err != nil {
 		log.Printf("Unable to create job directory %s: %v", dir, err)
 	} else {
-		if err := ioutil.WriteFile(filepath.Join(dir, "job_content.json"), job.GetJSON(), 0666); err != nil {
+		if err := ioutil.WriteFile(filepath.Join(dir, "job_content.json"), job.GetJSON(false), 0666); err != nil {
 			log.Printf("Unable to write job content under %s: %v", dir, err)
 		}
 		job.JSON = nil

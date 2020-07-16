@@ -112,9 +112,9 @@ func (job *Job) CountTasks() int {
 	return job.TotalTasks
 }
 
-// GetJSON 获取Job的JSON表达。如果失败返回nil。
-func (job *Job) GetJSON() []byte {
-	if job.JSON == nil {
+// GetJSON 获取Job的JSON表达，可指定是否刷新。如果失败返回nil。
+func (job *Job) GetJSON(refresh bool) []byte {
+	if refresh || job.JSON == nil {
 		if b, err := json.Marshal(job); err == nil {
 			job.JSON = b
 		} else {

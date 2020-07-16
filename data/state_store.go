@@ -193,7 +193,7 @@ func (m *StateStore) AddJob(job *model.Job) error {
 	job.SubmitTime = time.Now()
 
 	// 写入数据库文件
-	err := m.boltDB.put("job", job.ID, job.GetJSON())
+	err := m.boltDB.put("job", job.ID, job.GetJSON(true))
 	if err != nil {
 		return fmt.Errorf("Unable to save submitted job \"%s\"(%s): %v", job.Name, job.ID, err)
 	}
@@ -214,7 +214,7 @@ func (m *StateStore) UpdateJobState(jobid string) error {
 	}
 	if job.RefreshState() {
 		log.Printf("  Job %s is set to \"%s\"\n", job.ID, model.JobStateString(job.State))
-		err := m.boltDB.put("job", job.ID, job.GetJSON())
+		err := m.boltDB.put("job", job.ID, job.GetJSON(true))
 		if err != nil {
 			return fmt.Errorf("Unable to save job \"%s\"(%s): %v", job.Name, job.ID, err)
 		}
@@ -228,7 +228,7 @@ func (m *StateStore) SetJobState(jobid string, state model.JobState) error {
 		return fmt.Errorf("Job identified by \"%s\" not found", jobid)
 	}
 	job.State = state
-	err := m.boltDB.put("job", job.ID, job.GetJSON())
+	err := m.boltDB.put("job", job.ID, job.GetJSON(true))
 	if err != nil {
 		return fmt.Errorf("Unable to save job \"%s\"(%s): %v", job.Name, job.ID, err)
 	}
