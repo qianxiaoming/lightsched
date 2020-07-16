@@ -162,6 +162,52 @@ func (job *Job) IsSchedulable() bool {
 	return job.Schedulable && (job.State == JobQueued || job.State == JobExecuting)
 }
 
+// RefreshState 根据内部任务的状态确定Job的最新状态
+func (job *Job) RefreshState() bool {
+	last := job.State
+	total := job.CountTasks()
+	var waitting, executing, completed, failed, terminated int
+	for _, g := range job.Groups {
+		for _, t := range g.Tasks {
+			switch t.State {
+			case TaskQueued:
+				waitting++
+			case TaskScheduled, TaskDispatching, TaskExecuting:
+				executing++
+			case TaskCompleted:
+				completed++
+			case TaskFailed, TaskAborted:
+				failed++
+			case TaskTerminated:
+				terminated++
+			}
+		}
+	}
+	if completed == total {
+		job.State = JobCompleted
+	} else if waitting == 0 && executing == 0 {
+		if terminated > 0 {
+			job.State = JobTerminated
+		} else {
+			job.State = JobFailed
+			if job.MaxErrors > 0 && job.MaxErrors >= failed {
+				job.State = JobCompleted
+			}
+		}
+	} else if waitting == total {
+		job.State = JobQueued
+	} else {
+		job.State = JobExecuting
+	}
+	if job.State != JobQueued && job.ExecTime.IsZero() {
+		job.ExecTime = time.Now()
+	}
+	if (job.State == JobCompleted || job.State == JobFailed || job.State == JobTerminated) && job.FinishTime.IsZero() {
+		job.FinishTime = time.Now()
+	}
+	return last != job.State
+}
+
 // GeneralJobSlice 是Job通常情况下的排序方式
 type GeneralJobSlice []*Job
 

@@ -209,50 +209,7 @@ func (m *StateStore) AddJob(job *model.Job) error {
 
 func (m *StateStore) UpdateJobState(jobid string) error {
 	job := m.jobMap[jobid]
-	var total, waitting, executing, completed, failed, aborted, terminated int
-	for _, g := range job.Groups {
-		for _, t := range g.Tasks {
-			total++
-			switch t.State {
-			case model.TaskQueued, model.TaskScheduled, model.TaskDispatching:
-				waitting++
-			case model.TaskExecuting:
-				executing++
-			case model.TaskCompleted:
-				completed++
-			case model.TaskFailed:
-				failed++
-			case model.TaskAborted:
-				aborted++
-			case model.TaskTerminated:
-				terminated++
-			}
-		}
-	}
-	last := job.State
-	if completed == total {
-		job.State = model.JobCompleted
-	} else if executing > 0 {
-		if job.State != model.JobExecuting {
-			job.ExecTime = time.Now()
-		}
-		job.State = model.JobExecuting
-	} else if terminated > 0 {
-		job.State = model.JobTerminated
-		job.FinishTime = time.Now()
-	} else if aborted > 0 || failed > 0 {
-		if waitting == 0 {
-			job.State = model.JobFailed
-			if job.MaxErrors > 0 && job.MaxErrors >= aborted+failed {
-				job.State = model.JobCompleted
-			}
-			job.FinishTime = time.Now()
-		} else if job.MaxErrors > 0 && job.MaxErrors >= aborted+failed {
-			job.State = model.JobCompleted
-			job.FinishTime = time.Now()
-		}
-	}
-	if last != job.State {
+	if job.RefreshState() {
 		log.Printf("  Job %s is set to \"%s\"\n", job.ID, model.JobStateString(job.State))
 	}
 	err := m.boltDB.put("job", job.ID, job.GetJSON())
