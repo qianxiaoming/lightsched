@@ -75,7 +75,7 @@ type Job struct {
 	ExecTime    time.Time         `json:"exec_time"`
 	FinishTime  time.Time         `json:"finish_time"`
 	State       JobState          `json:"state"`
-	Progress    int               `json:"-"`
+	Progress    int               `json:"progress"`
 	TotalTasks  int               `json:"-"`
 	JSON        []byte            `json:"-"` // 缓存Job的JSON表达
 	InitCycle   int64             `json:"-"` // 初次尝试调度的周期
@@ -191,6 +191,7 @@ func (job *Job) RefreshState() bool {
 			}
 		}
 	}
+	job.Progress = int(float32(completed) / float32(total) * 100.0)
 	if completed == total {
 		job.State = JobCompleted
 	} else if waitting == 0 && executing == 0 {
