@@ -95,7 +95,11 @@ func (e JobEndpoint) createJob(c *gin.Context) {
 
 func (e JobEndpoint) deleteJob(c *gin.Context) {
 	id := c.Params.ByName("id")
-	c.JSON(http.StatusOK, gin.H{"job": id})
+	if err := apiserver.requestDeleteJob(id); err != nil {
+		responseError(http.StatusBadRequest, "Unable to delete job: %v", err, c)
+		return
+	}
+	c.Status(http.StatusOK)
 }
 
 func (e JobEndpoint) terminateJob(c *gin.Context) {

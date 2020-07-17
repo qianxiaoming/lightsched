@@ -1,6 +1,7 @@
 package data
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -96,4 +97,34 @@ func (db *BoltDB) getBucketJSON(bucket string, create func() interface{}, save f
 		}
 		return nil
 	})
+}
+
+func (db *BoltDB) delete(bucket string, key string) error {
+	return db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(bucket))
+		err := b.Delete([]byte(key))
+		return err
+	})
+}
+
+func (db *BoltDB) deletePrefix(bucket string, prefix string) error {
+	ids := make([][]byte, 0, 32)
+	db.View(func(tx *bolt.Tx) error {
+		c := tx.Bucket([]byte(bucket)).Cursor()
+		p := []byte(prefix)
+		for k, _ := c.Seek(p); k != nil && bytes.HasPrefix(k, p); k, _ = c.Next() {
+			ids = append(ids, k)
+		}
+		return nil
+	})
+	err := db.Batch(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(bucket))
+		for _, k := range ids {
+			if err := b.Delete(k); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	return err
 }

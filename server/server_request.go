@@ -106,7 +106,7 @@ func (svc *APIServer) requestUpdateTasks(updates []*message.TaskStatus) {
 func (svc *APIServer) requestTerminateJob(id string) error {
 	svc.state.Lock()
 	defer svc.state.Unlock()
-	log.Printf("Terminate Job %s\n", id)
+	log.Printf("Terminating Job %s\n", id)
 	if err := svc.state.SetJobState(id, model.JobTerminating); err != nil {
 		return err
 	}
@@ -153,6 +153,22 @@ func (svc *APIServer) requestGetJob(jobid string) *message.JobInfo {
 	if job := svc.state.GetJob(jobid); job != nil {
 		return message.NewJobInfo(job)
 	}
+	return nil
+}
+
+func (svc *APIServer) requestDeleteJob(jobid string) error {
+	svc.state.Lock()
+	defer svc.state.Unlock()
+
+	log.Printf("Deleting Job %s...\n", jobid)
+	if err := svc.state.DeleteJob(jobid); err != nil {
+		return err
+	}
+	dir := filepath.Join(svc.config.dataPath, jobid)
+	if err := os.RemoveAll(dir); err != nil {
+		return err
+	}
+	log.Println("Job deleted")
 	return nil
 }
 

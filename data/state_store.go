@@ -178,6 +178,40 @@ func (m *StateStore) GetJob(id string) *model.Job {
 	return nil
 }
 
+func (m *StateStore) DeleteJob(id string) error {
+	job, ok := m.jobMap[id]
+	if !ok {
+		return fmt.Errorf("Job not found")
+	}
+	if job.State == model.JobExecuting || job.State == model.JobTerminating {
+		return fmt.Errorf("Cannot delete executing jobs")
+	}
+	delete(m.jobMap, id)
+	for i, j := range m.jobList {
+		if j.ID == id {
+			m.jobList = append(m.jobList[:i], m.jobList[i+1:]...)
+			break
+		}
+	}
+	if queue, ok := m.jobQueues[job.Queue]; ok {
+		for i, j := range queue.Jobs {
+			if j.ID == id {
+				queue.Jobs = append(queue.Jobs[:i], queue.Jobs[i+1:]...)
+				break
+			}
+		}
+	}
+	if err := m.boltDB.delete("job", id); err != nil {
+		log.Printf("Failed to delete job in database: %v", err)
+	}
+	// 正确的ID中不会含有.
+	if err := m.boltDB.deletePrefix("task", id+"."); err != nil {
+		log.Printf("Failed to delete task for job %s in database: %v", id, err)
+	}
+
+	return nil
+}
+
 func (m *StateStore) GetJobList(filterState *model.JobState, sortField model.JobSortField, offset, limits int) []*model.Job {
 	jobs := make([]*model.Job, 0, 16)
 	for _, j := range m.jobList {
