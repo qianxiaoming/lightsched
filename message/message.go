@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/qianxiaoming/lightsched/model"
+	"github.com/qianxiaoming/lightsched/util"
 )
 
 const (
@@ -108,3 +109,91 @@ func NewJobInfo(job *model.Job) *JobInfo {
 
 // NodeInfo 返回给客户端的计算节点信息
 type NodeInfo model.WorkNode
+
+// TaskInfo 返回给客户端的计算任务信息
+type TaskInfo struct {
+	ID         string             `json:"id"`
+	Name       string             `json:"name"`
+	Envs       []string           `json:"envs,omitempty"`
+	Command    string             `json:"command,omitempty"`
+	Args       string             `json:"args,omitempty"`
+	WorkDir    string             `json:"workdir,omitempty"`
+	Labels     map[string]string  `json:"labels,omitempty"`
+	Taints     map[string]string  `json:"taints,omitempty"`
+	Resources  *model.ResourceSet `json:"resources,omitempty"`
+	State      model.TaskState    `json:"state"`
+	NodeName   string             `json:"node,omitempty"`
+	Progress   int                `json:"progress"`
+	ExitCode   int                `json:"exit_code"`
+	Error      string             `json:"error,omitempty"`
+	StartTime  *time.Time         `json:"start_time,omitempty"`
+	FinishTime *time.Time         `json:"finish_time,omitempty"`
+}
+
+// NewTaskInfo 根据Task创建对应的信息体
+func NewTaskInfo(task *model.Task) *TaskInfo {
+	info := &TaskInfo{
+		ID:         task.ID,
+		Name:       task.Name,
+		Envs:       task.Envs,
+		Command:    task.Command,
+		Args:       task.Args,
+		WorkDir:    task.WorkDir,
+		Labels:     util.CloneMap(task.Labels),
+		Taints:     util.CloneMap(task.Taints),
+		Resources:  task.Resources.Clone(),
+		State:      task.State,
+		NodeName:   task.NodeName,
+		Progress:   task.Progress,
+		ExitCode:   task.ExitCode,
+		Error:      task.Error,
+		StartTime:  nil,
+		FinishTime: nil,
+	}
+	if !task.StartTime.IsZero() {
+		info.StartTime = &time.Time{}
+		*info.StartTime = task.StartTime
+	}
+	if !task.FinishTime.IsZero() {
+		info.FinishTime = &time.Time{}
+		*info.FinishTime = task.FinishTime
+	}
+	return info
+}
+
+// TaskBriefInfo 是任务的基本状态信息
+type TaskBriefInfo struct {
+	ID         string          `json:"id"`
+	Name       string          `json:"name"`
+	State      model.TaskState `json:"state"`
+	NodeName   string          `json:"node,omitempty"`
+	Progress   int             `json:"progress"`
+	ExitCode   int             `json:"exit_code"`
+	Error      string          `json:"error,omitempty"`
+	StartTime  *time.Time      `json:"start_time,omitempty"`
+	FinishTime *time.Time      `json:"finish_time,omitempty"`
+}
+
+// NewTaskBriefInfo 根据Task创建对应的状态信息体
+func NewTaskBriefInfo(task *model.Task) *TaskBriefInfo {
+	info := &TaskBriefInfo{
+		ID:         task.ID,
+		Name:       task.Name,
+		State:      task.State,
+		NodeName:   task.NodeName,
+		Progress:   task.Progress,
+		ExitCode:   task.ExitCode,
+		Error:      task.Error,
+		StartTime:  nil,
+		FinishTime: nil,
+	}
+	if !task.StartTime.IsZero() {
+		info.StartTime = &time.Time{}
+		*info.StartTime = task.StartTime
+	}
+	if !task.FinishTime.IsZero() {
+		info.FinishTime = &time.Time{}
+		*info.FinishTime = task.FinishTime
+	}
+	return info
+}

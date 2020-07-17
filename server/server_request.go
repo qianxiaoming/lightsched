@@ -180,3 +180,33 @@ func (svc *APIServer) requestListNodes() []*message.NodeInfo {
 	}
 	return infos
 }
+
+func (svc *APIServer) requestGetTask(id string) *message.TaskInfo {
+	svc.state.Lock()
+	defer svc.state.Unlock()
+
+	jobid, groupid, taskid := model.ParseTaskID(id)
+	job := svc.state.GetJob(jobid)
+	if job == nil {
+		return nil
+	}
+	task := job.Groups[groupid].Tasks[taskid]
+	return message.NewTaskInfo(task)
+}
+
+func (svc *APIServer) requestGetJobTasks(id string) []*message.TaskBriefInfo {
+	svc.state.Lock()
+	defer svc.state.Unlock()
+
+	job := svc.state.GetJob(id)
+	if job == nil {
+		return nil
+	}
+	infos := make([]*message.TaskBriefInfo, 0, job.CountTasks())
+	for _, group := range job.Groups {
+		for _, task := range group.Tasks {
+			infos = append(infos, message.NewTaskBriefInfo(task))
+		}
+	}
+	return infos
+}

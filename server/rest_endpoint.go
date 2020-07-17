@@ -111,9 +111,22 @@ type TaskEndpoint struct{}
 
 func (e TaskEndpoint) registerRoute() {
 	apiserver.restRouter.GET(e.restPrefix(), func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"tasks": [...]string{"t001", "t002", "t003"},
-		})
+		jobid := c.Query("jobid")
+		tasks := apiserver.requestGetJobTasks(jobid)
+		if tasks == nil {
+			c.Status(http.StatusNotFound)
+		} else {
+			c.JSON(http.StatusOK, tasks)
+		}
+	})
+	apiserver.restRouter.GET(e.restPrefix()+"/:id", func(c *gin.Context) {
+		taskid := c.Params.ByName("id")
+		taskInfo := apiserver.requestGetTask(taskid)
+		if taskInfo == nil {
+			c.Status(http.StatusNotFound)
+		} else {
+			c.JSON(http.StatusOK, taskInfo)
+		}
 	})
 }
 

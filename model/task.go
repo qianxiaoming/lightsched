@@ -133,6 +133,9 @@ func NewTaskWithSpec(group *TaskGroup, id int, spec *TaskSpec) *Task {
 // ParseTaskID 解析Task的完整编号，分别返回Job, TaskGroup和Task的编号
 func ParseTaskID(id string) (string, int, int) {
 	ids := strings.Split(id, ".")
+	if len(ids) != 3 {
+		return "", -1, -1
+	}
 	group, _ := strconv.Atoi(ids[1])
 	task, _ := strconv.Atoi(ids[2])
 	return ids[0], group, task
