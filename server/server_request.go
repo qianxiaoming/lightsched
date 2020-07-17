@@ -2,8 +2,10 @@ package server
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -209,4 +211,35 @@ func (svc *APIServer) requestGetJobTasks(id string) []*message.TaskBriefInfo {
 		}
 	}
 	return infos
+}
+
+func (svc *APIServer) requestGetTaskBrief(id string) *message.TaskBriefInfo {
+	svc.state.Lock()
+	defer svc.state.Unlock()
+
+	jobid, groupid, taskid := model.ParseTaskID(id)
+	job := svc.state.GetJob(jobid)
+	if job == nil {
+		return nil
+	}
+	task := job.Groups[groupid].Tasks[taskid]
+	return message.NewTaskBriefInfo(task)
+}
+
+func (svc *APIServer) requestGetTaskLog(id string) io.ReadCloser {
+	svc.state.Lock()
+	defer svc.state.Unlock()
+
+	jobid, groupid, taskid := model.ParseTaskID(id)
+	job := svc.state.GetJob(jobid)
+	if job == nil {
+		return nil
+	}
+	filename := filepath.Join(svc.config.dataPath, jobid, fmt.Sprintf("%d.%d.log", groupid, taskid))
+	file, err := os.OpenFile(filename, os.O_RDONLY, 0666)
+	if err != nil {
+		log.Printf("Unable to open log file %s: %v\n", filename, err)
+		return nil
+	}
+	return file
 }

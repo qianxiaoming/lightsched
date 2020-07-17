@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -121,11 +122,30 @@ func (e TaskEndpoint) registerRoute() {
 	})
 	apiserver.restRouter.GET(e.restPrefix()+"/:id", func(c *gin.Context) {
 		taskid := c.Params.ByName("id")
-		taskInfo := apiserver.requestGetTask(taskid)
-		if taskInfo == nil {
+		var content interface{}
+		if len(c.Query("brief")) > 0 {
+			content = apiserver.requestGetTaskBrief(taskid)
+		} else {
+			content = apiserver.requestGetTask(taskid)
+		}
+		if content == nil {
 			c.Status(http.StatusNotFound)
 		} else {
-			c.JSON(http.StatusOK, taskInfo)
+			c.JSON(http.StatusOK, content)
+		}
+	})
+	apiserver.restRouter.GET(e.restPrefix()+"/:id/log", func(c *gin.Context) {
+		taskid := c.Params.ByName("id")
+		logfile := apiserver.requestGetTaskLog(taskid)
+		if logfile == nil {
+			c.Status(http.StatusNotFound)
+		} else {
+			defer logfile.Close()
+			c.Status(http.StatusOK)
+			_, err := io.Copy(c.Writer, logfile)
+			if err != nil {
+				log.Printf("Unable to write all log content for task: %v", err)
+			}
 		}
 	})
 }
