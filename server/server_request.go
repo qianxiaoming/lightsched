@@ -127,3 +127,29 @@ func (svc *APIServer) requestTerminateJob(id string) error {
 	}
 	return nil
 }
+
+func (svc *APIServer) requestListJobs(filterState *model.JobState, sortField model.JobSortField, offset, limits int) []*message.JobInfo {
+	svc.state.Lock()
+	defer svc.state.Unlock()
+
+	allJobs := svc.state.GetJobList(filterState, sortField, offset, limits)
+	if allJobs == nil {
+		return nil
+	}
+
+	infos := make([]*message.JobInfo, 0, len(allJobs))
+	for _, j := range allJobs {
+		infos = append(infos, message.NewJobInfo(j))
+	}
+	return infos
+}
+
+func (svc *APIServer) requestGetJob(jobid string) *message.JobInfo {
+	svc.state.Lock()
+	defer svc.state.Unlock()
+
+	if job := svc.state.GetJob(jobid); job != nil {
+		return message.NewJobInfo(job)
+	}
+	return nil
+}

@@ -36,7 +36,7 @@ func IsFinishState(state TaskState) bool {
 	return state == TaskCompleted || state == TaskFailed || state == TaskAborted || state == TaskTerminated
 }
 
-func TaskStateString(state TaskState) string {
+func TaskStateToString(state TaskState) string {
 	switch state {
 	case TaskQueued:
 		return "Queued"

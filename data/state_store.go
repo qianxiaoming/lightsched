@@ -127,7 +127,7 @@ func (m *StateStore) loadFromDatabase() error {
 	for _, v := range m.jobMap {
 		m.jobList = append(m.jobList, v)
 	}
-	sort.Sort(model.GeneralJobSlice(m.jobList))
+	sort.Sort(&model.GeneralJobSorter{Jobs: m.jobList})
 	log.Printf("%d job(s) loaded", len(m.jobList))
 
 	// 加载所有Task信息
@@ -178,6 +178,26 @@ func (m *StateStore) GetJob(id string) *model.Job {
 	return nil
 }
 
+func (m *StateStore) GetJobList(filterState *model.JobState, sortField model.JobSortField, offset, limits int) []*model.Job {
+	jobs := make([]*model.Job, 0, 16)
+	for _, j := range m.jobList {
+		if filterState == nil || j.State == *filterState {
+			jobs = append(jobs, j)
+		}
+	}
+	sort.Sort(&model.GeneralJobSorter{Jobs: jobs, SortBy: sortField})
+	if offset == 0 && limits == -1 {
+		return jobs
+	}
+	if offset+limits > len(jobs) {
+		limits = len(jobs) - offset
+	}
+	if offset == 0 && limits == len(jobs) {
+		return jobs
+	}
+	return jobs[offset : offset+limits]
+}
+
 func (m *StateStore) AddJob(job *model.Job) error {
 	// 确定ID的唯一性
 	_, ok := m.jobMap[job.ID]
@@ -213,7 +233,7 @@ func (m *StateStore) UpdateJobState(jobid string) error {
 		return fmt.Errorf("Job identified by \"%s\" not found", jobid)
 	}
 	if job.RefreshState() {
-		log.Printf("  Job %s is set to \"%s\"\n", job.ID, model.JobStateString(job.State))
+		log.Printf("  Job %s is set to \"%s\"\n", job.ID, model.JobStateToString(job.State))
 		err := m.boltDB.put("job", job.ID, job.GetJSON(true))
 		if err != nil {
 			return fmt.Errorf("Unable to save job \"%s\"(%s): %v", job.Name, job.ID, err)
@@ -268,9 +288,9 @@ func (m *StateStore) UpdateTaskStatus(id string, state model.TaskState, progress
 			// 仅在Task的状态发生变化时才保存
 			m.boltDB.putJSON("task", task.ID, task)
 			if model.IsFinishState(task.State) {
-				log.Printf("  Task %s is reported as \"%s\" with exit code %d by node %s: %s", id, model.TaskStateString(task.State), exit, task.NodeName, err)
+				log.Printf("  Task %s is reported as \"%s\" with exit code %d by node %s: %s", id, model.TaskStateToString(task.State), exit, task.NodeName, err)
 			} else {
-				log.Printf("  Task %s is reported as \"%s\" by node %s", id, model.TaskStateString(task.State), task.NodeName)
+				log.Printf("  Task %s is reported as \"%s\" by node %s", id, model.TaskStateToString(task.State), task.NodeName)
 			}
 			// 当Task是执行状态并且Job也是执行状态时，无需更新Job的状态（此时可能仅仅是Task的进度刷新）
 			if task.State != model.TaskExecuting || job.State != model.JobExecuting {

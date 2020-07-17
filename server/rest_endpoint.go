@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/qianxiaoming/lightsched/model"
@@ -23,11 +24,9 @@ func responseError(code int, format string, err error, c *gin.Context) {
 type JobEndpoint struct{}
 
 func (e JobEndpoint) registerRoute() {
-	apiserver.restRouter.GET(e.restPrefix(), func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"jobs": [...]string{"001", "002", "003"},
-		})
-	})
+	// state=Executing&sort=submit/state&offset=0&limit=15
+	apiserver.restRouter.GET(e.restPrefix(), e.getJobs)
+	apiserver.restRouter.GET(e.restPrefix()+"/:id", e.getJob)
 	apiserver.restRouter.POST(e.restPrefix(), e.createJob)
 	apiserver.restRouter.GET(e.restPrefix()+"/:id/_terminate", e.terminateJob)
 	apiserver.restRouter.DELETE(e.restPrefix()+"/:id", e.deleteJob)
@@ -35,6 +34,47 @@ func (e JobEndpoint) registerRoute() {
 
 func (e JobEndpoint) restPrefix() string {
 	return "/jobs"
+}
+
+func (e JobEndpoint) getJobs(c *gin.Context) {
+	var filterState *model.JobState = nil
+	if v := c.Query("state"); len(v) > 0 {
+		state := model.JobStateFromString(v)
+		filterState = &state
+	}
+	sortField := model.SortJobByDefault
+	if v := c.Query("sort"); len(v) > 0 {
+		if v == "state" {
+			sortField = model.SortJobByState
+		} else if v == "submit" {
+			sortField = model.SortJobBySubmit
+		}
+	}
+	offset := 0
+	if v := c.Query("offset"); len(v) > 0 {
+		offset, _ = strconv.Atoi(v)
+	}
+	limits := -1
+	if v := c.Query("limits"); len(v) > 0 {
+		limits, _ = strconv.Atoi(v)
+	}
+
+	allJobs := apiserver.requestListJobs(filterState, sortField, offset, limits)
+	if allJobs != nil {
+		c.JSON(http.StatusOK, allJobs)
+	} else {
+		c.Status(http.StatusNotFound)
+	}
+}
+
+func (e JobEndpoint) getJob(c *gin.Context) {
+	jobid := c.Params.ByName("id")
+	jobInfo := apiserver.requestGetJob(jobid)
+	if jobInfo == nil {
+		c.Status(http.StatusNotFound)
+	} else {
+		c.JSON(http.StatusOK, jobInfo)
+	}
 }
 
 func (e JobEndpoint) createJob(c *gin.Context) {

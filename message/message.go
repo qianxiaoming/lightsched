@@ -2,6 +2,7 @@ package message
 
 import (
 	"strings"
+	"time"
 
 	"github.com/qianxiaoming/lightsched/model"
 )
@@ -51,4 +52,56 @@ type Heartbeat struct {
 	CPU     float64       `json:"cpu"`
 	Memory  float64       `json:"memory"`
 	Payload []*TaskStatus `json:"payload,omitempty"`
+}
+
+// JobInfo 返回给客户端的Job信息
+type JobInfo struct {
+	ID          string            `json:"id"`
+	Name        string            `json:"name"`
+	Queue       string            `json:"queue"`
+	Priority    int               `json:"priority"`
+	Labels      map[string]string `json:"labels,omitempty"`
+	Taints      map[string]string `json:"taints,omitempty"`
+	Schedulable bool              `json:"schedulable"`
+	MaxErrors   int               `json:"max_errors"`
+	Groups      []string          `json:"groups"`
+	SubmitTime  time.Time         `json:"submit_time"`
+	ExecTime    *time.Time        `json:"exec_time,omitempty"`
+	FinishTime  *time.Time        `json:"finish_time,omitempty"`
+	State       model.JobState    `json:"state"`
+	Progress    int               `json:"progress"`
+	TotalTasks  int               `json:"tasks"`
+}
+
+// NewJobInfo 根据Job创建对应的信息体
+func NewJobInfo(job *model.Job) *JobInfo {
+	info := &JobInfo{
+		ID:          job.ID,
+		Name:        job.Name,
+		Queue:       job.Queue,
+		Priority:    job.Priority,
+		Labels:      job.Labels,
+		Taints:      job.Taints,
+		Schedulable: job.Schedulable,
+		MaxErrors:   job.MaxErrors,
+		Groups:      make([]string, 0, len(job.Groups)),
+		SubmitTime:  job.SubmitTime,
+		ExecTime:    nil,
+		FinishTime:  nil,
+		State:       job.State,
+		Progress:    job.Progress,
+		TotalTasks:  job.TotalTasks,
+	}
+	for _, g := range job.Groups {
+		info.Groups = append(info.Groups, g.Name)
+	}
+	if !job.ExecTime.IsZero() {
+		info.ExecTime = &time.Time{}
+		*info.ExecTime = job.ExecTime
+	}
+	if !job.FinishTime.IsZero() {
+		info.FinishTime = &time.Time{}
+		*info.FinishTime = job.FinishTime
+	}
+	return info
 }

@@ -26,8 +26,8 @@ const (
 	JobTerminated
 )
 
-// JobStateString 将Job的状态转换为字符串
-func JobStateString(state JobState) string {
+// JobStateToString 将Job的状态转换为字符串
+func JobStateToString(state JobState) string {
 	switch state {
 	case JobQueued:
 		return "Queued"
@@ -45,6 +45,27 @@ func JobStateString(state JobState) string {
 		return "Terminated"
 	}
 	return ""
+}
+
+// JobStateFromString 将Job的状态转换为字符串
+func JobStateFromString(state string) JobState {
+	switch state {
+	case "Queued":
+		return JobQueued
+	case "Executing":
+		return JobExecuting
+	case "Halted":
+		return JobHalted
+	case "Completed":
+		return JobCompleted
+	case "Failed":
+		return JobFailed
+	case "Terminating":
+		return JobTerminating
+	case "Terminated":
+		return JobTerminated
+	}
+	return JobQueued
 }
 
 // JobSpec 表示提交的作业的基本信息，包含多个任务组的描述。
@@ -225,32 +246,54 @@ func (job *Job) RefreshState() bool {
 	return last != job.State
 }
 
-// GeneralJobSlice 是Job通常情况下的排序方式
-type GeneralJobSlice []*Job
+type JobSortField int
 
-func (s GeneralJobSlice) Len() int {
-	return len(s)
+const (
+	SortJobByDefault JobSortField = iota
+	SortJobByState
+	SortJobBySubmit
+)
+
+// GeneralJobSorter 是Job通常情况下的排序方式
+type GeneralJobSorter struct {
+	Jobs   []*Job
+	SortBy JobSortField
 }
 
-func (s GeneralJobSlice) Less(i, j int) bool {
-	if s[i].IsSchedulable() && !s[j].IsSchedulable() {
-		return true
-	} else if !s[i].IsSchedulable() && s[j].IsSchedulable() {
-		return false
-	}
-	if s[i].Priority > s[j].Priority {
-		return true
-	} else if s[i].Priority < s[j].Priority {
-		return false
-	}
-	if s[i].SubmitTime.Before(s[j].SubmitTime) {
-		return true
-	} else if s[i].SubmitTime.After(s[j].SubmitTime) {
-		return false
-	}
-	return s[i].Name < s[j].Name
+func (s *GeneralJobSorter) Len() int {
+	return len(s.Jobs)
 }
 
-func (s GeneralJobSlice) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
+func (s *GeneralJobSorter) Less(i, j int) bool {
+	if s.SortBy == SortJobByState {
+		if s.Jobs[i].State < s.Jobs[j].State {
+			return true
+		} else if s.Jobs[i].State > s.Jobs[j].State {
+			return false
+		}
+		if s.Jobs[i].Priority > s.Jobs[j].Priority {
+			return true
+		} else if s.Jobs[i].Priority < s.Jobs[j].Priority {
+			return false
+		}
+		return s.Jobs[i].SubmitTime.Before(s.Jobs[j].SubmitTime)
+	} else if s.SortBy == SortJobBySubmit {
+		return s.Jobs[i].SubmitTime.After(s.Jobs[j].SubmitTime)
+	} else {
+		if s.Jobs[i].IsSchedulable() && !s.Jobs[j].IsSchedulable() {
+			return true
+		} else if !s.Jobs[i].IsSchedulable() && s.Jobs[j].IsSchedulable() {
+			return false
+		}
+		if s.Jobs[i].Priority > s.Jobs[j].Priority {
+			return true
+		} else if s.Jobs[i].Priority < s.Jobs[j].Priority {
+			return false
+		}
+		return s.Jobs[i].SubmitTime.Before(s.Jobs[j].SubmitTime)
+	}
+}
+
+func (s *GeneralJobSorter) Swap(i, j int) {
+	s.Jobs[i], s.Jobs[j] = s.Jobs[j], s.Jobs[i]
 }
