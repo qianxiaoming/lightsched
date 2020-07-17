@@ -32,21 +32,23 @@ type WorkNode struct {
 	Online    time.Time         `json:"online"`
 	Labels    map[string]string `json:"labels,omitempty"`
 	Taints    map[string]string `json:"taints,omitempty"`
-	Resources ResourceSet       `json:"resources"` // 节点的总资源量
-	Reserved  ResourceSet       `json:"reserved"`  // 节点保留的资源量（不用于计算任务调度）
-	Available ResourceSet       `json:"available"` // 在节点刚加入的时候 Available = Resources - Reserved
+	Resources *ResourceSet      `json:"resources"` // 节点的总资源量
+	Reserved  *ResourceSet      `json:"reserved"`  // 节点保留的资源量（不用于计算任务调度）
+	Available *ResourceSet      `json:"available"` // 在节点刚加入的时候 Available = Resources - Reserved
 }
 
 // NewWorkNode 创建计算节点对象。计算节点默认保留1.5个CPU和2Gi内存。
 func NewWorkNode(name string) *WorkNode {
 	return &WorkNode{
-		Name:  name,
-		State: NodeUnknown,
-		Reserved: ResourceSet{
+		Name:      name,
+		State:     NodeUnknown,
+		Resources: &ResourceSet{},
+		Reserved: &ResourceSet{
 			CPU: ResourceCPU{
 				Cores: 1.5,
 			},
 			Memory: 2000,
 		},
+		Available: &ResourceSet{},
 	}
 }

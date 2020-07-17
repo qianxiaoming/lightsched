@@ -2,6 +2,7 @@ package data
 
 import (
 	"crypto/sha1"
+	"encoding/json"
 	"log"
 	"sync"
 	"time"
@@ -78,7 +79,7 @@ func (cache *NodeCache) AddNode(node *model.WorkNode) {
 }
 
 // AppendNodeMessage 给指定的节点增加一个消息
-func (cache *NodeCache) AppendNodeMessage(name string, kind string, object string, json []byte) {
+func (cache *NodeCache) AppendNodeMessage(name string, kind string, object string, content []byte) {
 	index := int(sha1.Sum([]byte(name))[0]) % NodeBucketCount
 	cache.buckets[index].Lock()
 	defer cache.buckets[index].Unlock()
@@ -89,7 +90,7 @@ func (cache *NodeCache) AppendNodeMessage(name string, kind string, object strin
 	msg := &message.JSON{
 		Kind:    kind,
 		Object:  object,
-		Content: json,
+		Content: content,
 	}
 	// 需要根据新消息过滤同一个节点上的其它消息
 	filterMsg := false
@@ -106,6 +107,14 @@ func (cache *NodeCache) AppendNodeMessage(name string, kind string, object strin
 				news = append(news, old)
 			} else {
 				log.Printf("Message of kind %s for %s will not send to %s\n", old.Kind, old.Object, name)
+				if old.Kind == message.KindScheduleTask {
+					// 需要将资源归还给节点
+					task := &model.Task{}
+					if err := json.Unmarshal(old.Content, task); err == nil {
+						log.Println("Give back resources of this task")
+						cache.nodeMap[task.NodeName].Available.GiveBack(task.Resources)
+					}
+				}
 			}
 		}
 		msgs = news

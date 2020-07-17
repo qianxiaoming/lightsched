@@ -113,7 +113,7 @@ func scheduleCycle(svc *APIServer) []scheduleRecord {
 	scheduleNodes := make([]*scheduleNode, 0, len(svc.nodes.GetNodes()))
 	for _, node := range svc.nodes.GetNodes() {
 		if node.State == model.NodeOnline {
-			n := &scheduleNode{node: node, available: (&node.Available).Clone()}
+			n := &scheduleNode{node: node, available: node.Available.Clone()}
 			scheduleNodes = append(scheduleNodes, n)
 		}
 	}

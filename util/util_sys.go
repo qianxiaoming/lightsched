@@ -27,3 +27,15 @@ func GenerateUUID() string {
 	}
 	return sb.String()
 }
+
+// CloneMap 用于深度拷贝map
+func CloneMap(m map[string]string) map[string]string {
+	if m == nil {
+		return nil
+	}
+	c := make(map[string]string)
+	for k, v := range m {
+		c[k] = v
+	}
+	return c
+}

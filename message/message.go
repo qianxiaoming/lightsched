@@ -105,3 +105,6 @@ func NewJobInfo(job *model.Job) *JobInfo {
 	}
 	return info
 }
+
+// NodeInfo 返回给客户端的计算节点信息
+type NodeInfo model.WorkNode

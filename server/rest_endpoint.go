@@ -141,9 +141,12 @@ type NodeEndpoint struct{}
 
 func (e NodeEndpoint) registerRoute() {
 	apiserver.restRouter.GET(e.restPrefix(), func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"tasks": [...]string{"t001", "t002", "t003"},
-		})
+		allNodes := apiserver.requestListNodes()
+		if allNodes != nil {
+			c.JSON(http.StatusOK, allNodes)
+		} else {
+			c.Status(http.StatusNotFound)
+		}
 	})
 }
 

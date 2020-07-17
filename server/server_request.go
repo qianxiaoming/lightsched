@@ -61,11 +61,11 @@ func (svc *APIServer) requestRegisterNode(ip string, req *message.RegisterNode) 
 		Online:    time.Now(),
 		Labels:    req.Labels,
 		Taints:    nil,
-		Resources: req.Resources,
-		Reserved:  *model.DefaultResourceSet,
-		Available: req.Resources,
+		Resources: (&req.Resources).Clone(),
+		Reserved:  model.DefaultResourceSet,
+		Available: (&req.Resources).Clone(),
 	}
-	node.Available.Consume(&node.Reserved)
+	node.Available.Consume(node.Reserved)
 
 	svc.nodes.Lock()
 	defer svc.nodes.Unlock()
@@ -152,4 +152,31 @@ func (svc *APIServer) requestGetJob(jobid string) *message.JobInfo {
 		return message.NewJobInfo(job)
 	}
 	return nil
+}
+
+func (svc *APIServer) requestListNodes() []*message.NodeInfo {
+	svc.nodes.Lock()
+	defer svc.nodes.Unlock()
+
+	nodes := svc.nodes.GetNodes()
+	if len(nodes) == 0 {
+		return nil
+	}
+	infos := make([]*message.NodeInfo, 0, len(nodes))
+	for _, n := range nodes {
+		info := &message.NodeInfo{
+			Name:      n.Name,
+			Address:   n.Address,
+			Platform:  n.Platform,
+			State:     n.State,
+			Online:    n.Online,
+			Labels:    util.CloneMap(n.Labels),
+			Taints:    util.CloneMap(n.Taints),
+			Resources: n.Resources.Clone(),
+			Reserved:  n.Reserved.Clone(),
+			Available: n.Available.Clone(),
+		}
+		infos = append(infos, info)
+	}
+	return infos
 }
