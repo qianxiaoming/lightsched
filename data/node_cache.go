@@ -25,7 +25,7 @@ type NodePeriodic struct {
 // NodeBucket 保存要发给节点的消息。多个节点可能会共享同一个NodeBucket。
 type NodeBucket struct {
 	sync.Mutex
-	messages  map[string][]message.JSON
+	messages  map[string][]*message.JSON
 	periodics map[string]*NodePeriodic
 }
 
@@ -71,30 +71,50 @@ func (cache *NodeCache) AddNode(node *model.WorkNode) {
 	cache.buckets[index].Lock()
 	defer cache.buckets[index].Unlock()
 	if cache.buckets[index].messages == nil {
-		cache.buckets[index].messages = make(map[string][]message.JSON)
+		cache.buckets[index].messages = make(map[string][]*message.JSON)
 		cache.buckets[index].periodics = make(map[string]*NodePeriodic)
 	}
 	cache.buckets[index].messages[node.Name] = nil
 }
 
 // AppendNodeMessage 给指定的节点增加一个消息
-func (cache *NodeCache) AppendNodeMessage(name string, kind string, json []byte) {
+func (cache *NodeCache) AppendNodeMessage(name string, kind string, object string, json []byte) {
 	index := int(sha1.Sum([]byte(name))[0]) % NodeBucketCount
 	cache.buckets[index].Lock()
 	defer cache.buckets[index].Unlock()
 	msgs := cache.buckets[index].messages[name]
 	if msgs == nil {
-		msgs = make([]message.JSON, 0, 8)
+		msgs = make([]*message.JSON, 0, 8)
 	}
-	cache.buckets[index].messages[name] = append(msgs,
-		message.JSON{
-			Kind:    kind,
-			Content: json,
-		})
+	msg := &message.JSON{
+		Kind:    kind,
+		Object:  object,
+		Content: json,
+	}
+	// 需要根据新消息过滤同一个节点上的其它消息
+	filterMsg := false
+	for _, old := range msgs {
+		if !message.Filter(msg, old) {
+			filterMsg = true
+			break
+		}
+	}
+	if filterMsg {
+		news := make([]*message.JSON, 0, len(msgs))
+		for _, old := range msgs {
+			if message.Filter(msg, old) {
+				news = append(news, old)
+			} else {
+				log.Printf("Message of kind %s for %s will not send to %s\n", old.Kind, old.Object, name)
+			}
+		}
+		msgs = news
+	}
+	cache.buckets[index].messages[name] = append(msgs, msg)
 }
 
 // PeriodicUpdate 获取指定节点的消息，然后清空它的消息列表。返回false表示未发现该节点的注册信息。
-func (cache *NodeCache) PeriodicUpdate(name string, cpu float64, mem float64) ([]message.JSON, bool) {
+func (cache *NodeCache) PeriodicUpdate(name string, cpu float64, mem float64) ([]*message.JSON, bool) {
 	index := int(sha1.Sum([]byte(name))[0]) % NodeBucketCount
 	cache.buckets[index].Lock()
 	defer cache.buckets[index].Unlock()

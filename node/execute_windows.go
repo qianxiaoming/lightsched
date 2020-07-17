@@ -16,18 +16,11 @@ import (
 	"github.com/qianxiaoming/lightsched/model"
 )
 
-func (node *NodeServer) runExecuteTask(msg message.JSON, terminated map[string]bool) {
+func (node *NodeServer) runExecuteTask(msg *message.JSON) {
 	task := &model.Task{}
 	if err := json.Unmarshal(msg.Content, task); err != nil {
 		log.Printf("NOTICE: Unable to unmarshal task json and just ignore it now: %v\n", err)
 	} else {
-		jobid, _, _ := model.ParseTaskID(task.ID)
-		if _, ok := terminated[jobid]; ok {
-			// 该Task所属的Job已经被终止
-			log.Printf("Task(%s) program will not be executed\n", task.ID)
-			node.notifyTaskStatus(task.ID, model.TaskTerminated, nil, 0, 1, "")
-			return
-		}
 		log.Printf("Execute task(%s) program: %s %s\n", task.ID, task.Command, task.Args)
 		cmd := exec.Command(task.Command, task.Args)
 		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}

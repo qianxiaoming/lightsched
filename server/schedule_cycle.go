@@ -192,7 +192,7 @@ func (svc *APIServer) runScheduleCycle() {
 		record.target.node.Available.Consume(record.task.Resources)
 		// 缓存调度结果，以便节点拉取调度到自身的Task
 		msg, _ := json.Marshal(record.task)
-		svc.nodes.AppendNodeMessage(record.target.node.Name, message.KindScheduleTask, msg)
+		svc.nodes.AppendNodeMessage(record.target.node.Name, message.KindScheduleTask, record.task.ID, msg)
 
 		updates = append(updates, record.task)
 	}

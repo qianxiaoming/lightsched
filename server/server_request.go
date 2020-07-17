@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -124,8 +123,7 @@ func (svc *APIServer) requestTerminateJob(id string) error {
 	svc.nodes.Lock()
 	defer svc.nodes.Unlock()
 	for name := range nodes {
-		msg, _ := json.Marshal(&message.JobID{ID: id})
-		svc.nodes.AppendNodeMessage(name, message.KindTerminateJob, msg)
+		svc.nodes.AppendNodeMessage(name, message.KindTerminateJob, id, nil)
 	}
 	return nil
 }

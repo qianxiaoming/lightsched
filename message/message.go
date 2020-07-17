@@ -1,6 +1,10 @@
 package message
 
-import "github.com/qianxiaoming/lightsched/model"
+import (
+	"strings"
+
+	"github.com/qianxiaoming/lightsched/model"
+)
 
 const (
 	// KindScheduleTask 调度任务执行消息
@@ -11,8 +15,17 @@ const (
 
 // JSON 表示内容是JSON的消息，其中通过kind字段说明类型
 type JSON struct {
-	Kind    string
-	Content []byte
+	Kind    string `json:"kind"`
+	Object  string `json:"object"` // 消息相关的对象标识
+	Content []byte `json:"content,omitempty"`
+}
+
+// Filter 判断消息是否可以共同发送
+func Filter(msg *JSON, other *JSON) bool {
+	if msg.Kind == KindTerminateJob && other.Kind == KindScheduleTask {
+		return !strings.HasPrefix(other.Object, msg.Object)
+	}
+	return true
 }
 
 // RegisterNode 节点注册消息
@@ -38,9 +51,4 @@ type Heartbeat struct {
 	CPU     float64       `json:"cpu"`
 	Memory  float64       `json:"memory"`
 	Payload []*TaskStatus `json:"payload,omitempty"`
-}
-
-// JobID Job编号信息
-type JobID struct {
-	ID string `json:"id"`
 }

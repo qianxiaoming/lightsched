@@ -64,7 +64,7 @@ type NodeServer struct {
 // NewNodeServer 创建1个NodeServer实例
 func NewNodeServer(apiserver string, hostname string) *NodeServer {
 	if len(apiserver) == 0 {
-		apiserver = os.Getenv("LIGHTSCHED_APISERVER_ADDR")
+		apiserver = os.Getenv("LIGHTSCHED_APISERVER")
 	}
 	if len(hostname) == 0 {
 		var err error
