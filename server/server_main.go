@@ -112,6 +112,8 @@ func (svc *APIServer) Run() int {
 	restEngine := gin.New()
 	restEngine.Use(gin.Recovery())
 	svc.registerRestEndpoint(restEngine)
+	restEngine.Static("/portal", "./html")
+	restEngine.StaticFile("/favicon.ico", "./html/favicon.ico")
 	httpRest := &http.Server{
 		Addr:         fmt.Sprintf("%s:%d", svc.config.address, svc.config.restPort),
 		Handler:      restEngine,
