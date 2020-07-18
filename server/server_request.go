@@ -131,8 +131,8 @@ func (svc *APIServer) requestTerminateJob(id string) error {
 }
 
 func (svc *APIServer) requestListJobs(filterState *model.JobState, sortField model.JobSortField, offset, limits int) []*message.JobInfo {
-	svc.state.Lock()
-	defer svc.state.Unlock()
+	svc.state.RLock()
+	defer svc.state.RUnlock()
 
 	allJobs := svc.state.GetJobList(filterState, sortField, offset, limits)
 	if allJobs == nil {
@@ -147,8 +147,8 @@ func (svc *APIServer) requestListJobs(filterState *model.JobState, sortField mod
 }
 
 func (svc *APIServer) requestGetJob(jobid string) *message.JobInfo {
-	svc.state.Lock()
-	defer svc.state.Unlock()
+	svc.state.RLock()
+	defer svc.state.RUnlock()
 
 	if job := svc.state.GetJob(jobid); job != nil {
 		return message.NewJobInfo(job)
@@ -173,8 +173,8 @@ func (svc *APIServer) requestDeleteJob(jobid string) error {
 }
 
 func (svc *APIServer) requestListNodes() []*message.NodeInfo {
-	svc.nodes.Lock()
-	defer svc.nodes.Unlock()
+	svc.nodes.RLock()
+	defer svc.nodes.RUnlock()
 
 	nodes := svc.nodes.GetNodes()
 	if len(nodes) == 0 {
@@ -200,8 +200,8 @@ func (svc *APIServer) requestListNodes() []*message.NodeInfo {
 }
 
 func (svc *APIServer) requestGetTask(id string) *message.TaskInfo {
-	svc.state.Lock()
-	defer svc.state.Unlock()
+	svc.state.RLock()
+	defer svc.state.RUnlock()
 
 	jobid, groupid, taskid := model.ParseTaskID(id)
 	job := svc.state.GetJob(jobid)
@@ -213,8 +213,8 @@ func (svc *APIServer) requestGetTask(id string) *message.TaskInfo {
 }
 
 func (svc *APIServer) requestGetJobTasks(id string) []*message.TaskBriefInfo {
-	svc.state.Lock()
-	defer svc.state.Unlock()
+	svc.state.RLock()
+	defer svc.state.RUnlock()
 
 	job := svc.state.GetJob(id)
 	if job == nil {
@@ -230,8 +230,8 @@ func (svc *APIServer) requestGetJobTasks(id string) []*message.TaskBriefInfo {
 }
 
 func (svc *APIServer) requestGetTaskBrief(id string) *message.TaskBriefInfo {
-	svc.state.Lock()
-	defer svc.state.Unlock()
+	svc.state.RLock()
+	defer svc.state.RUnlock()
 
 	jobid, groupid, taskid := model.ParseTaskID(id)
 	job := svc.state.GetJob(jobid)
@@ -243,8 +243,8 @@ func (svc *APIServer) requestGetTaskBrief(id string) *message.TaskBriefInfo {
 }
 
 func (svc *APIServer) requestGetTaskLog(id string) io.ReadCloser {
-	svc.state.Lock()
-	defer svc.state.Unlock()
+	svc.state.RLock()
+	defer svc.state.RUnlock()
 
 	jobid, groupid, taskid := model.ParseTaskID(id)
 	job := svc.state.GetJob(jobid)
