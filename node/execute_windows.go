@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os/exec"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -55,7 +56,21 @@ func (node *NodeServer) runExecuteTask(msg *message.JSON) {
 			}
 			// 记录任务程序的输出
 			if strings.HasPrefix(line, "[PROGRESS]") {
+				cur, str := parseProgress(line)
+				if cur != -1 && cur != progress {
+					progress = cur
+					node.notifyTaskStatus(task.ID, model.TaskExecuting, cmd.Process, progress, 0, "")
+				}
+				if len(str) > 0 {
+					logs.WriteString(line)
+				}
 			} else if strings.HasPrefix(line, "[ERROR]") {
+				s := strings.Index(line, "]")
+				if s < len(line)-1 {
+					line = strings.Trim(line[s+1:], " ")
+					line = strings.Trim(line, "\n")
+					node.notifyTaskStatus(task.ID, model.TaskExecuting, cmd.Process, progress, 0, line)
+				}
 			} else {
 				logs.WriteString(line)
 			}
@@ -82,4 +97,21 @@ func (node *NodeServer) runExecuteTask(msg *message.JSON) {
 			}
 		}
 	}
+}
+
+func parseProgress(str string) (int, string) {
+	s := strings.Index(str, " ")
+	e := strings.Index(str, "%")
+	if s != -1 && e != -1 {
+		if p, err := strconv.Atoi(str[s+1 : e]); err == nil {
+			if p > 100 {
+				p = 100
+			}
+			if e < len(str)-2 {
+				return p, str[e+2:]
+			}
+			return p, ""
+		}
+	}
+	return -1, ""
 }

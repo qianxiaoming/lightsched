@@ -316,7 +316,11 @@ func (m *StateStore) UpdateTaskStatus(id string, state model.TaskState, progress
 		task.State = state
 		task.Progress = progress
 		task.ExitCode = exit
-		task.Error = err
+		if len(task.Error) == 0 {
+			task.Error = err
+		} else {
+			task.Error = fmt.Sprintf("%s\n%s", task.Error, err)
+		}
 		if task.State == model.TaskExecuting {
 			task.StartTime = time.Now()
 		} else if model.IsFinishState(state) {
