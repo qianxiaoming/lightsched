@@ -29,7 +29,7 @@ func (e JobEndpoint) registerRoute() {
 	apiserver.restRouter.GET(e.restPrefix(), e.getJobs)
 	apiserver.restRouter.GET(e.restPrefix()+"/:id", e.getJob)
 	apiserver.restRouter.POST(e.restPrefix(), e.createJob)
-	apiserver.restRouter.GET(e.restPrefix()+"/:id/_terminate", e.terminateJob)
+	apiserver.restRouter.PUT(e.restPrefix()+"/:id/_terminate", e.terminateJob)
 	apiserver.restRouter.DELETE(e.restPrefix()+"/:id", e.deleteJob)
 }
 
@@ -177,6 +177,30 @@ func (e NodeEndpoint) registerRoute() {
 		allNodes := apiserver.requestListNodes()
 		if allNodes != nil {
 			c.JSON(http.StatusOK, allNodes)
+		}
+	})
+	apiserver.restRouter.GET(e.restPrefix()+"/:name", func(c *gin.Context) {
+		c.Status(http.StatusNotFound)
+		node := apiserver.requestGetNode(c.Params.ByName("name"))
+		if node != nil {
+			c.JSON(http.StatusOK, node)
+		}
+	})
+	apiserver.restRouter.PUT(e.restPrefix()+"/:name/_offline", func(c *gin.Context) {
+		kill := c.Query("kill") == "yes"
+		err := apiserver.requestOfflineNode(c.Params.ByName("name"), kill)
+		if err == nil {
+			c.Status(http.StatusOK)
+		} else {
+			responseError(http.StatusNotFound, "%v", err, c)
+		}
+	})
+	apiserver.restRouter.PUT(e.restPrefix()+"/:name/_online", func(c *gin.Context) {
+		err := apiserver.requestOnlineNode(c.Params.ByName("name"))
+		if err == nil {
+			c.Status(http.StatusOK)
+		} else {
+			responseError(http.StatusNotFound, "%v", err, c)
 		}
 	})
 }

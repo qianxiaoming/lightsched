@@ -199,6 +199,60 @@ func (svc *APIServer) requestListNodes() []*message.NodeInfo {
 	return infos
 }
 
+func (svc *APIServer) requestGetNode(name string) *message.NodeInfo {
+	svc.nodes.RLock()
+	defer svc.nodes.RUnlock()
+
+	n := svc.nodes.GetNode(name)
+	if n == nil {
+		return nil
+	}
+	return &message.NodeInfo{
+		Name:      n.Name,
+		Address:   n.Address,
+		Platform:  n.Platform,
+		State:     n.State,
+		Online:    n.Online,
+		Labels:    util.CloneMap(n.Labels),
+		Taints:    util.CloneMap(n.Taints),
+		Resources: n.Resources.Clone(),
+		Reserved:  n.Reserved.Clone(),
+		Available: n.Available.Clone(),
+	}
+}
+
+func (svc *APIServer) requestOnlineNode(name string) error {
+	svc.nodes.Lock()
+	defer svc.nodes.Unlock()
+
+	n := svc.nodes.GetNode(name)
+	if n == nil {
+		return fmt.Errorf("Node %s not found", name)
+	}
+	n.State = model.NodeOnline
+	log.Printf("Node %s is in ONLINE state now", name)
+	svc.setScheduleFlag()
+	return nil
+}
+
+func (svc *APIServer) requestOfflineNode(name string, kill bool) error {
+	svc.nodes.Lock()
+	defer svc.nodes.Unlock()
+
+	n := svc.nodes.GetNode(name)
+	if n == nil {
+		return fmt.Errorf("Node %s not found", name)
+	}
+
+	n.State = model.NodeOffline
+	if kill {
+		// 目前先不考虑强制杀死在该节点上运行的Task
+	}
+	log.Printf("Node %s is in OFFLINE state now", name)
+	svc.setScheduleFlag()
+	return nil
+}
+
 func (svc *APIServer) requestGetTask(id string) *message.TaskInfo {
 	svc.state.RLock()
 	defer svc.state.RUnlock()

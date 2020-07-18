@@ -172,8 +172,8 @@ func (cache *NodeCache) CheckTimeoutNodes(seconds int) map[string]*model.WorkNod
 			}
 
 			// 将节点状态设为Offline
-			node.State = model.NodeOffline
-			log.Printf("Node %s is set to OFFLINE since last timestamp is %v", node.Name, v.timestamp)
+			node.State = model.NodeUnknown
+			log.Printf("Node %s is in UNKNOWN state now since last timestamp is %v", node.Name, v.timestamp)
 			if nodes == nil {
 				nodes = make(map[string]*model.WorkNode)
 			}
