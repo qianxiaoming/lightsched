@@ -151,3 +151,43 @@ func (cache *NodeCache) PeriodicUpdate(name string, cpu float64, mem float64) ([
 	}
 	return nil, true
 }
+
+// CheckTimeoutNodes 返回所有更新时间超时的节点
+func (cache *NodeCache) CheckTimeoutNodes(seconds int) map[string]*model.WorkNode {
+	now := time.Now()
+	var nodes map[string]*model.WorkNode
+	for i := 0; i < NodeBucketCount; i++ {
+		if cache.buckets[i].periodics == nil {
+			continue
+		}
+		cache.buckets[i].Lock()
+		for k, v := range cache.buckets[i].periodics {
+			node, _ := cache.nodeMap[k]
+			if node.State != model.NodeOnline {
+				continue
+			}
+			duration := now.Sub(v.timestamp)
+			if int(duration.Seconds()) <= seconds {
+				continue
+			}
+
+			// 将节点状态设为Offline
+			node.State = model.NodeOffline
+			log.Printf("Node %s is set to OFFLINE since last timestamp is %v", node.Name, v.timestamp)
+			if nodes == nil {
+				nodes = make(map[string]*model.WorkNode)
+			}
+			nodes[k] = node
+
+			// 清空准备发给该节点的消息
+			if cache.buckets[i].messages != nil {
+				if _, ok := cache.buckets[i].messages[k]; ok {
+					cache.buckets[i].messages[k] = nil
+				}
+			}
+
+		}
+		cache.buckets[i].Unlock()
+	}
+	return nodes
+}

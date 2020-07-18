@@ -24,6 +24,7 @@ type Config struct {
 	address  string
 	restPort int
 	nodePort int
+	offline  int
 	dataPath string
 	logPath  string
 	instance string
@@ -64,6 +65,7 @@ func NewAPIServer() *APIServer {
 			address:  "",
 			restPort: constant.DefaultRestPort,
 			nodePort: constant.DefaultNodePort,
+			offline:  5,
 			dataPath: dataPath,
 			logPath:  logPath,
 			instance: util.GenerateUUID(),
@@ -128,7 +130,8 @@ func (svc *APIServer) Run() int {
 	})
 
 	// 启动定时器并等待系统中断信号
-	timer := time.NewTimer(time.Second)
+	timerSched := time.NewTimer(time.Second)
+	timerNode := time.NewTimer(time.Second * time.Duration(svc.config.offline+2))
 	quit := make(chan os.Signal)
 	signal.Notify(quit, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
@@ -137,9 +140,12 @@ func (svc *APIServer) Run() int {
 		select {
 		case <-quit:
 			stopped = true
-		case <-timer.C:
+		case <-timerSched.C:
 			svc.runScheduleCycle()
-			timer.Reset(time.Second)
+			timerSched.Reset(time.Second)
+		case <-timerNode.C:
+			svc.requestCheckNodes()
+			timerNode.Reset(time.Second * time.Duration(svc.config.offline+2))
 		}
 	}
 

@@ -134,7 +134,7 @@ func (svc *APIServer) requestListJobs(filterState *model.JobState, sortField mod
 	svc.state.RLock()
 	defer svc.state.RUnlock()
 
-	allJobs := svc.state.GetJobList(filterState, sortField, offset, limits)
+	allJobs := svc.state.QueryJobs(filterState, sortField, offset, limits)
 	if allJobs == nil {
 		return nil
 	}
@@ -258,4 +258,47 @@ func (svc *APIServer) requestGetTaskLog(id string) io.ReadCloser {
 		return nil
 	}
 	return file
+}
+
+func (svc *APIServer) requestCheckNodes() {
+	svc.state.Lock()
+	defer svc.state.Unlock()
+
+	svc.nodes.Lock()
+	defer svc.nodes.Unlock()
+
+	nodes := svc.nodes.CheckTimeoutNodes(svc.config.offline)
+	if nodes == nil {
+		return
+	}
+
+	var tasks []*model.Task
+	jobs := svc.state.GetAllJobs()
+	for _, job := range jobs {
+		if job.State != model.JobExecuting {
+			continue
+		}
+		for _, group := range job.Groups {
+			for _, task := range group.Tasks {
+				if model.IsFinishState(task.State) || task.State == model.TaskQueued {
+					continue
+				}
+				if _, ok := nodes[task.NodeName]; ok {
+					log.Printf("Task %s was scheduled to node %s and reschedule it now", task.ID, task.NodeName)
+					task.State = model.TaskQueued
+					task.NodeName = ""
+					task.Progress = 0
+					task.StartTime = time.Time{}
+					if tasks == nil {
+						tasks = make([]*model.Task, 0, 8)
+					}
+					tasks = append(tasks, task)
+				}
+			}
+		}
+	}
+	if len(tasks) > 0 {
+		svc.state.SaveTasks(tasks)
+		svc.setScheduleFlag()
+	}
 }

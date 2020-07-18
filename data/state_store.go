@@ -178,6 +178,10 @@ func (m *StateStore) GetJob(id string) *model.Job {
 	return nil
 }
 
+func (m *StateStore) GetAllJobs() []*model.Job {
+	return m.jobList
+}
+
 func (m *StateStore) DeleteJob(id string) error {
 	job, ok := m.jobMap[id]
 	if !ok {
@@ -212,7 +216,7 @@ func (m *StateStore) DeleteJob(id string) error {
 	return nil
 }
 
-func (m *StateStore) GetJobList(filterState *model.JobState, sortField model.JobSortField, offset, limits int) []*model.Job {
+func (m *StateStore) QueryJobs(filterState *model.JobState, sortField model.JobSortField, offset, limits int) []*model.Job {
 	jobs := make([]*model.Job, 0, 16)
 	for _, j := range m.jobList {
 		if filterState == nil || j.State == *filterState {
