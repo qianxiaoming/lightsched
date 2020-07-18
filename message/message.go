@@ -38,8 +38,8 @@ type RegisterNode struct {
 	Resources model.ResourceSet  `json:"resources"`
 }
 
-// TaskStatus 表示任务的执行状态信息
-type TaskStatus struct {
+// TaskReport 是由节点上报的任务执行状态
+type TaskReport struct {
 	ID       string          `json:"id"`
 	State    model.TaskState `json:"state"`
 	Progress int             `json:"progress"`
@@ -52,7 +52,7 @@ type Heartbeat struct {
 	Name    string        `json:"name"`
 	CPU     float64       `json:"cpu"`
 	Memory  float64       `json:"memory"`
-	Payload []*TaskStatus `json:"payload,omitempty"`
+	Payload []*TaskReport `json:"payload,omitempty"`
 }
 
 // JobInfo 返回给客户端的Job信息

@@ -34,14 +34,14 @@ type Config struct {
 }
 
 type TaskUpdate struct {
-	status  *message.TaskStatus
+	status  *message.TaskReport
 	process *os.Process
 }
 
 type Heartbeat struct {
 	errors  int
 	url     string
-	payload map[string]*message.TaskStatus
+	payload map[string]*message.TaskReport
 }
 
 type TaskProcess struct {
@@ -86,7 +86,7 @@ func NewNodeServer(apiserver string, hostname string) *NodeServer {
 		heartbeat: Heartbeat{
 			errors:  0,
 			url:     "http://" + apiserver + "/heartbeat",
-			payload: make(map[string]*message.TaskStatus),
+			payload: make(map[string]*message.TaskReport),
 		},
 		executings: make(map[string]TaskProcess),
 		update:     make(chan *TaskUpdate, 32),
@@ -179,7 +179,7 @@ func (node *NodeServer) Run(cpustr string, gpustr string, memorystr string, labe
 
 func (node *NodeServer) notifyTaskStatus(id string, state model.TaskState, process *os.Process, progress, exit int, err string) {
 	node.update <- &TaskUpdate{
-		status: &message.TaskStatus{
+		status: &message.TaskReport{
 			ID:       id,
 			State:    state,
 			Progress: progress,

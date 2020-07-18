@@ -78,7 +78,7 @@ func (svc *APIServer) requestRegisterNode(ip string, req *message.RegisterNode) 
 	return nil
 }
 
-func (svc *APIServer) requestUpdateTasks(updates []*message.TaskStatus) {
+func (svc *APIServer) requestUpdateTasks(updates []*message.TaskReport) {
 	svc.state.Lock()
 	defer svc.state.Unlock()
 	svc.nodes.Lock()
@@ -263,15 +263,16 @@ func (svc *APIServer) requestGetTaskLog(id string) io.ReadCloser {
 func (svc *APIServer) requestCheckNodes() {
 	svc.state.Lock()
 	defer svc.state.Unlock()
-
 	svc.nodes.Lock()
 	defer svc.nodes.Unlock()
 
+	// 确定所有超时的节点
 	nodes := svc.nodes.CheckTimeoutNodes(svc.config.offline)
 	if nodes == nil {
 		return
 	}
 
+	// 遍历Task，将所有分配给超时节点并未完成的任务设为Queued状态
 	var tasks []*model.Task
 	jobs := svc.state.GetAllJobs()
 	for _, job := range jobs {

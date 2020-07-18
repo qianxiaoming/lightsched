@@ -26,7 +26,6 @@ type PlatformInfo struct {
 type WorkNode struct {
 	Name      string            `json:"name"`
 	Address   string            `json:"address"`
-	Port      int               `json:"port"`
 	Platform  PlatformInfo      `json:"platform"`
 	State     NodeState         `json:"state"`
 	Online    time.Time         `json:"online"`

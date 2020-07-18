@@ -16,13 +16,13 @@ import (
 func (node *NodeServer) sendHeartbeat() error {
 	cpu, _ := cpu.Percent(0, false)
 	mem, _ := mem.VirtualMemory()
-	var payload []*message.TaskStatus
+	var payload []*message.TaskReport
 	if len(node.heartbeat.payload) > 0 {
-		payload = make([]*message.TaskStatus, 0, len(node.heartbeat.payload))
+		payload = make([]*message.TaskReport, 0, len(node.heartbeat.payload))
 		for _, v := range node.heartbeat.payload {
 			payload = append(payload, v)
 		}
-		node.heartbeat.payload = make(map[string]*message.TaskStatus)
+		node.heartbeat.payload = make(map[string]*message.TaskReport)
 	}
 	hb := &message.Heartbeat{
 		Name:    node.config.hostname,
