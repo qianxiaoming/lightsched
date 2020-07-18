@@ -69,11 +69,9 @@ func (e JobEndpoint) getJobs(c *gin.Context) {
 }
 
 func (e JobEndpoint) getJob(c *gin.Context) {
-	jobid := c.Params.ByName("id")
-	jobInfo := apiserver.requestGetJob(jobid)
-	if jobInfo == nil {
-		c.Status(http.StatusNotFound)
-	} else {
+	c.Status(http.StatusNotFound)
+	jobInfo := apiserver.requestGetJob(c.Params.ByName("id"))
+	if jobInfo != nil {
 		c.JSON(http.StatusOK, jobInfo)
 	}
 }
@@ -116,25 +114,22 @@ type TaskEndpoint struct{}
 
 func (e TaskEndpoint) registerRoute() {
 	apiserver.restRouter.GET(e.restPrefix(), func(c *gin.Context) {
-		jobid := c.Query("jobid")
-		tasks := apiserver.requestGetJobTasks(jobid)
-		if tasks == nil {
-			c.Status(http.StatusNotFound)
-		} else {
+		c.Status(http.StatusNotFound)
+		tasks := apiserver.requestGetJobTasks(c.Query("jobid"))
+		if tasks != nil {
 			c.JSON(http.StatusOK, tasks)
 		}
 	})
 	apiserver.restRouter.GET(e.restPrefix()+"/:id", func(c *gin.Context) {
 		taskid := c.Params.ByName("id")
 		var content interface{}
-		if len(c.Query("brief")) > 0 {
-			content = apiserver.requestGetTaskBrief(taskid)
+		c.Status(http.StatusNotFound)
+		if len(c.Query("status")) > 0 {
+			content = apiserver.requestGetTaskStatus(taskid)
 		} else {
 			content = apiserver.requestGetTask(taskid)
 		}
-		if content == nil {
-			c.Status(http.StatusNotFound)
-		} else {
+		if content != nil {
 			c.JSON(http.StatusOK, content)
 		}
 	})
@@ -178,11 +173,10 @@ type NodeEndpoint struct{}
 
 func (e NodeEndpoint) registerRoute() {
 	apiserver.restRouter.GET(e.restPrefix(), func(c *gin.Context) {
+		c.Status(http.StatusNotFound)
 		allNodes := apiserver.requestListNodes()
 		if allNodes != nil {
 			c.JSON(http.StatusOK, allNodes)
-		} else {
-			c.Status(http.StatusNotFound)
 		}
 	})
 }

@@ -212,7 +212,7 @@ func (svc *APIServer) requestGetTask(id string) *message.TaskInfo {
 	return message.NewTaskInfo(task)
 }
 
-func (svc *APIServer) requestGetJobTasks(id string) []*message.TaskBriefInfo {
+func (svc *APIServer) requestGetJobTasks(id string) []*message.TaskStatus {
 	svc.state.RLock()
 	defer svc.state.RUnlock()
 
@@ -220,16 +220,16 @@ func (svc *APIServer) requestGetJobTasks(id string) []*message.TaskBriefInfo {
 	if job == nil {
 		return nil
 	}
-	infos := make([]*message.TaskBriefInfo, 0, job.CountTasks())
+	infos := make([]*message.TaskStatus, 0, job.CountTasks())
 	for _, group := range job.Groups {
 		for _, task := range group.Tasks {
-			infos = append(infos, message.NewTaskBriefInfo(task))
+			infos = append(infos, message.NewTaskStatus(task))
 		}
 	}
 	return infos
 }
 
-func (svc *APIServer) requestGetTaskBrief(id string) *message.TaskBriefInfo {
+func (svc *APIServer) requestGetTaskStatus(id string) *message.TaskStatus {
 	svc.state.RLock()
 	defer svc.state.RUnlock()
 
@@ -239,7 +239,7 @@ func (svc *APIServer) requestGetTaskBrief(id string) *message.TaskBriefInfo {
 		return nil
 	}
 	task := job.Groups[groupid].Tasks[taskid]
-	return message.NewTaskBriefInfo(task)
+	return message.NewTaskStatus(task)
 }
 
 func (svc *APIServer) requestGetTaskLog(id string) io.ReadCloser {

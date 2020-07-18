@@ -161,24 +161,26 @@ func NewTaskInfo(task *model.Task) *TaskInfo {
 	return info
 }
 
-// TaskBriefInfo 是任务的基本状态信息
-type TaskBriefInfo struct {
-	ID         string          `json:"id"`
-	Name       string          `json:"name"`
-	State      model.TaskState `json:"state"`
-	NodeName   string          `json:"node,omitempty"`
-	Progress   int             `json:"progress"`
-	ExitCode   int             `json:"exit_code"`
-	Error      string          `json:"error,omitempty"`
-	StartTime  *time.Time      `json:"start_time,omitempty"`
-	FinishTime *time.Time      `json:"finish_time,omitempty"`
+// TaskStatus 包含任务的执行状态信息
+type TaskStatus struct {
+	ID         string            `json:"id"`
+	Name       string            `json:"name"`
+	Labels     map[string]string `json:"labels,omitempty"`
+	State      model.TaskState   `json:"state"`
+	NodeName   string            `json:"node,omitempty"`
+	Progress   int               `json:"progress"`
+	ExitCode   int               `json:"exit_code"`
+	Error      string            `json:"error,omitempty"`
+	StartTime  *time.Time        `json:"start_time,omitempty"`
+	FinishTime *time.Time        `json:"finish_time,omitempty"`
 }
 
-// NewTaskBriefInfo 根据Task创建对应的状态信息体
-func NewTaskBriefInfo(task *model.Task) *TaskBriefInfo {
-	info := &TaskBriefInfo{
+// NewTaskStatus 根据Task创建对应的状态信息体
+func NewTaskStatus(task *model.Task) *TaskStatus {
+	info := &TaskStatus{
 		ID:         task.ID,
 		Name:       task.Name,
+		Labels:     task.Labels,
 		State:      task.State,
 		NodeName:   task.NodeName,
 		Progress:   task.Progress,
