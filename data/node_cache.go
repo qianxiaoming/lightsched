@@ -64,6 +64,12 @@ func (cache *NodeCache) GetNode(name string) *model.WorkNode {
 func (cache *NodeCache) AddNode(node *model.WorkNode) {
 	if v, ok := cache.nodeMap[node.Name]; ok {
 		log.Printf("Node named \"%s\" already exists and its state is %d", v.Name, v.State)
+		delete(cache.nodeMap, node.Name)
+		for i, n := range cache.nodeList {
+			if n.Name == node.Name {
+				cache.nodeList = append(cache.nodeList[:i], cache.nodeList[i+1:]...)
+			}
+		}
 	}
 	cache.nodeMap[node.Name] = node
 	cache.nodeList = append(cache.nodeList, node)
@@ -73,9 +79,14 @@ func (cache *NodeCache) AddNode(node *model.WorkNode) {
 	defer cache.buckets[index].Unlock()
 	if cache.buckets[index].messages == nil {
 		cache.buckets[index].messages = make(map[string][]*message.JSON)
-		cache.buckets[index].periodics = make(map[string]*NodePeriodic)
+	} else {
+		delete(cache.buckets[index].messages, node.Name)
 	}
-	cache.buckets[index].messages[node.Name] = nil
+	if cache.buckets[index].periodics == nil {
+		cache.buckets[index].periodics = make(map[string]*NodePeriodic)
+	} else {
+		delete(cache.buckets[index].periodics, node.Name)
+	}
 }
 
 // AppendNodeMessage 给指定的节点增加一个消息

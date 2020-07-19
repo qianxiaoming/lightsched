@@ -90,7 +90,9 @@ func NewNodeServer(confPath string, apiserver string, hostname string, heartbeat
 			Hostname:  name,
 			Heartbeat: time.Second * 2,
 			LogPath:   logPath,
-			LogURL:    "http://" + apiserver + "/tasks/%s/log",
+		}
+		if len(conf.Apiserver) == 0 {
+			conf.Apiserver = fmt.Sprintf("127.0.0.1:%d", constant.DefaultNodePort)
 		}
 		b, _ := json.MarshalIndent(conf, "", "  ")
 		if err := ioutil.WriteFile(constant.NodeSeverConfigFile, b, 0666); err != nil {
@@ -99,8 +101,8 @@ func NewNodeServer(confPath string, apiserver string, hostname string, heartbeat
 	}
 	if len(apiserver) != 0 {
 		conf.Apiserver = apiserver
-		conf.LogURL = "http://" + apiserver + "/tasks/%s/log"
 	}
+	conf.LogURL = "http://" + conf.Apiserver + "/tasks/%s/log"
 	if len(hostname) != 0 {
 		conf.Hostname = hostname
 	}

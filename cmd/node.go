@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -43,8 +42,7 @@ can accept tasks which are scheduled by API Server.`,
 func init() {
 	rootCmd.AddCommand(nodeCmd)
 
-	port := fmt.Sprintf("%d", constant.DefaultNodePort)
-	serverAddr = nodeCmd.Flags().StringP("server", "s", "127.0.0.1:"+port, "Address and port of API Server")
+	serverAddr = nodeCmd.Flags().StringP("server", "s", "", "Address and port of API Server: 127.0.0.1:20517")
 	myhostname = nodeCmd.Flags().StringP("name", "n", "", "Host name of this machine")
 	heartbeat = nodeCmd.Flags().Int32P("heartbeat", "b", 0, "Heartbeat seconds")
 	cpuSetting = nodeCmd.Flags().StringP("cpu", "c", "", "Setting string for CPU resource: \"cores=16;freq=2400\"")
