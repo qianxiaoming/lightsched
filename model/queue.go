@@ -16,7 +16,7 @@ type JobQueue struct {
 	Name     string `json:"name"`
 	Enabled  bool   `json:"enabled"`
 	Priority int    `json:"priority"`
-	Jobs     []*Job
+	Jobs     []*Job `json:"-"`
 }
 
 // NewJobQueueWithSpec 创建新的JobQueue对象

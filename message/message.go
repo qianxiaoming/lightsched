@@ -77,21 +77,20 @@ type JobInfo struct {
 // NewJobInfo 根据Job创建对应的信息体
 func NewJobInfo(job *model.Job) *JobInfo {
 	info := &JobInfo{
-		ID:          job.ID,
-		Name:        job.Name,
-		Queue:       job.Queue,
-		Priority:    job.Priority,
-		Labels:      job.Labels,
-		Taints:      job.Taints,
-		Schedulable: job.Schedulable,
-		MaxErrors:   job.MaxErrors,
-		Groups:      make([]string, 0, len(job.Groups)),
-		SubmitTime:  job.SubmitTime,
-		ExecTime:    nil,
-		FinishTime:  nil,
-		State:       job.State,
-		Progress:    job.Progress,
-		TotalTasks:  job.TotalTasks,
+		ID:         job.ID,
+		Name:       job.Name,
+		Queue:      job.Queue,
+		Priority:   job.Priority,
+		Labels:     job.Labels,
+		Taints:     job.Taints,
+		MaxErrors:  job.MaxErrors,
+		Groups:     make([]string, 0, len(job.Groups)),
+		SubmitTime: job.SubmitTime,
+		ExecTime:   nil,
+		FinishTime: nil,
+		State:      job.State,
+		Progress:   job.Progress,
+		TotalTasks: job.TotalTasks,
 	}
 	for _, g := range job.Groups {
 		info.Groups = append(info.Groups, g.Name)
@@ -199,3 +198,6 @@ func NewTaskStatus(task *model.Task) *TaskStatus {
 	}
 	return info
 }
+
+// JobQueueInfo 返回给客户端的计算作业队列信息
+type JobQueueInfo model.JobQueue

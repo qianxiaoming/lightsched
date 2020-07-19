@@ -30,6 +30,8 @@ func (e JobEndpoint) registerRoute() {
 	apiserver.restRouter.GET(e.restPrefix()+"/:id", e.getJob)
 	apiserver.restRouter.POST(e.restPrefix(), e.createJob)
 	apiserver.restRouter.PUT(e.restPrefix()+"/:id/_terminate", e.terminateJob)
+	apiserver.restRouter.PUT(e.restPrefix()+"/:id/_halt", e.haltJob)
+	apiserver.restRouter.PUT(e.restPrefix()+"/:id/_resume", e.resumeJob)
 	apiserver.restRouter.PUT(e.restPrefix()+"/:id", e.modifyJobProps)
 	apiserver.restRouter.DELETE(e.restPrefix()+"/:id", e.deleteJob)
 }
@@ -96,6 +98,24 @@ func (e JobEndpoint) deleteJob(c *gin.Context) {
 	id := c.Params.ByName("id")
 	if err := apiserver.requestDeleteJob(id); err != nil {
 		responseError(http.StatusBadRequest, "Unable to delete job: %v", err, c)
+		return
+	}
+	c.Status(http.StatusOK)
+}
+
+func (e JobEndpoint) haltJob(c *gin.Context) {
+	id := c.Params.ByName("id")
+	if err := apiserver.requestHaltJob(id); err != nil {
+		responseError(http.StatusBadRequest, "Unable to halt job: %v", err, c)
+		return
+	}
+	c.Status(http.StatusOK)
+}
+
+func (e JobEndpoint) resumeJob(c *gin.Context) {
+	id := c.Params.ByName("id")
+	if err := apiserver.requestResumeJob(id); err != nil {
+		responseError(http.StatusBadRequest, "Unable to resume job: %v", err, c)
 		return
 	}
 	c.Status(http.StatusOK)
@@ -174,9 +194,19 @@ type QueueEndpoint struct{}
 
 func (e QueueEndpoint) registerRoute() {
 	apiserver.restRouter.GET(e.restPrefix(), func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"tasks": [...]string{"t001", "t002", "t003"},
-		})
+		// c.Status(http.StatusOK)
+		// queues := apiserver.requestGetQueues()
+		// if queues != nil {
+		// 	c.JSON(http.StatusOK, queues)
+		// }
+	})
+	apiserver.restRouter.PUT(e.restPrefix()+"/:name", func(c *gin.Context) {
+		// enabled := c.Query("enable") == "yes" || c.Query("enable") == "true"
+		// c.Status(http.StatusNotFound)
+		// err := apiserver.requestEnableQueue(c.Params.ByName("name"), enabled)
+		// if err == nil {
+		// 	c.Status(http.StatusOK)
+		// }
 	})
 }
 

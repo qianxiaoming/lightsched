@@ -29,7 +29,7 @@ func (e NodeRegisterEndpoint) registerRoute() {
 			log.Printf("    GPU Info: %d card(s) %dGi with CUDA %.1f", int(reg.Resources.GPU.Cards), reg.Resources.GPU.Memory, float32(reg.Resources.GPU.CUDA)/100.0)
 			err = apiserver.requestRegisterNode(ip, reg)
 			if err == nil {
-				c.JSON(http.StatusOK, gin.H{"instance": apiserver.config.instance})
+				c.JSON(http.StatusOK, gin.H{"cluster": apiserver.config.instance})
 				log.Println("Node registered")
 			} else {
 				responseError(http.StatusNotAcceptable, "%v", err, c)

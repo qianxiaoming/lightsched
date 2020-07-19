@@ -172,9 +172,34 @@ func (svc *APIServer) requestDeleteJob(jobid string) error {
 	return nil
 }
 
+func (svc *APIServer) requestHaltJob(jobid string) error {
+	svc.state.Lock()
+	defer svc.state.Unlock()
+
+	if err := svc.state.SetJobState(jobid, model.JobHalted); err != nil {
+		return err
+	}
+	log.Printf("Job %s halted\n", jobid)
+	return nil
+}
+
+func (svc *APIServer) requestResumeJob(jobid string) error {
+	svc.state.Lock()
+	defer svc.state.Unlock()
+
+	job := svc.state.GetJob(jobid)
+	if job.RefreshState() {
+		if err := svc.state.SetJobState(jobid, job.State); err != nil {
+			return err
+		}
+	}
+	log.Printf("Job %s resumed\n", jobid)
+	return nil
+}
+
 func (svc *APIServer) requestModifyJobProps(jobid string, props *model.JobUpdatableProps) error {
-	svc.state.RLock()
-	defer svc.state.RUnlock()
+	svc.state.Lock()
+	defer svc.state.Unlock()
 
 	var job *model.Job
 	if job = svc.state.GetJob(jobid); job == nil {

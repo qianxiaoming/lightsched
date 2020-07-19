@@ -50,19 +50,19 @@ func JobStateToString(state JobState) string {
 // JobStateFromString 将Job的状态转换为字符串
 func JobStateFromString(state string) JobState {
 	switch state {
-	case "Queued":
+	case "Queued", "queued":
 		return JobQueued
-	case "Executing":
+	case "Executing", "executing":
 		return JobExecuting
-	case "Halted":
+	case "Halted", "halted":
 		return JobHalted
-	case "Completed":
+	case "Completed", "completed":
 		return JobCompleted
-	case "Failed":
+	case "Failed", "failed":
 		return JobFailed
-	case "Terminating":
+	case "Terminating", "terminating":
 		return JobTerminating
-	case "Terminated":
+	case "Terminated", "terminated":
 		return JobTerminated
 	}
 	return JobQueued
@@ -83,40 +83,41 @@ type JobSpec struct {
 
 // Job 表示要执行的多个任务组集合。任务组之间可以有依赖关系。
 type Job struct {
-	ID          string            `json:"id"`
-	Name        string            `json:"name"`
-	Queue       string            `json:"queue"`
-	Priority    int               `json:"priority"`
-	Labels      map[string]string `json:"labels"`
-	Taints      map[string]string `json:"taints,omitempty"`
-	Schedulable bool              `json:"schedulable"`
-	MaxErrors   int               `json:"max_errors"`
-	Groups      []*TaskGroup      `json:"groups"`
-	SubmitTime  time.Time         `json:"submit_time"`
-	ExecTime    time.Time         `json:"exec_time"`
-	FinishTime  time.Time         `json:"finish_time"`
-	State       JobState          `json:"state"`
-	Progress    int               `json:"progress"`
-	TotalTasks  int               `json:"-"`
-	JSON        []byte            `json:"-"` // 缓存Job的JSON表达
-	InitCycle   int64             `json:"-"` // 初次尝试调度的周期
+	ID         string            `json:"id"`
+	Name       string            `json:"name"`
+	Queue      string            `json:"queue"`
+	Priority   int               `json:"priority"`
+	Labels     map[string]string `json:"labels"`
+	Taints     map[string]string `json:"taints,omitempty"`
+	MaxErrors  int               `json:"max_errors"`
+	Groups     []*TaskGroup      `json:"groups"`
+	SubmitTime time.Time         `json:"submit_time"`
+	ExecTime   time.Time         `json:"exec_time"`
+	FinishTime time.Time         `json:"finish_time"`
+	State      JobState          `json:"state"`
+	Progress   int               `json:"progress"`
+	TotalTasks int               `json:"-"`
+	JSON       []byte            `json:"-"` // 缓存Job的JSON表达
+	InitCycle  int64             `json:"-"` // 初次尝试调度的周期
 }
 
 // NewJobWithSpec 根据指定的JobSpec内容创建对应的Job对象
 func NewJobWithSpec(spec *JobSpec) *Job {
 	job := &Job{
-		ID:          spec.ID,
-		Name:        spec.Name,
-		Queue:       spec.Queue,
-		Priority:    spec.Priority,
-		Labels:      spec.Labels,
-		Taints:      spec.Taints,
-		Schedulable: spec.Schedulable,
-		MaxErrors:   spec.MaxErrors,
-		Groups:      make([]*TaskGroup, len(spec.GroupSpecs)),
-		State:       JobQueued,
-		Progress:    0,
-		TotalTasks:  0}
+		ID:         spec.ID,
+		Name:       spec.Name,
+		Queue:      spec.Queue,
+		Priority:   spec.Priority,
+		Labels:     spec.Labels,
+		Taints:     spec.Taints,
+		MaxErrors:  spec.MaxErrors,
+		Groups:     make([]*TaskGroup, len(spec.GroupSpecs)),
+		State:      JobQueued,
+		Progress:   0,
+		TotalTasks: 0}
+	if spec.Schedulable == false {
+		job.State = JobHalted
+	}
 	for i, g := range spec.GroupSpecs {
 		job.Groups[i] = NewTaskGroupWithSpec(fmt.Sprintf("%s.%d", job.ID, i), g)
 	}
@@ -185,7 +186,7 @@ func (job *Job) GetSchedulableTasks() []*Task {
 
 // IsSchedulable 判断Job是否可以被调度
 func (job *Job) IsSchedulable() bool {
-	return job.Schedulable && (job.State == JobQueued || job.State == JobExecuting)
+	return job.State == JobQueued || job.State == JobExecuting
 }
 
 // RefreshState 根据内部任务的状态确定Job的最新状态
@@ -215,6 +216,8 @@ func (job *Job) RefreshState() bool {
 	job.Progress = int(float32(completed) / float32(total) * 100.0)
 	if completed == total {
 		job.State = JobCompleted
+	} else if job.State == JobHalted {
+		return false
 	} else if waitting == 0 && executing == 0 {
 		if job.State == JobTerminating && terminated > 0 {
 			job.State = JobTerminated

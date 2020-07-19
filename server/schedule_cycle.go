@@ -125,6 +125,9 @@ func scheduleCycle(svc *APIServer) []scheduleRecord {
 	// 使用1个切片保存此次所有成功调度的Task
 	scheduleTable := make([]scheduleRecord, 0, 64)
 	for _, curQueue := range queues {
+		if curQueue.Enabled == false {
+			continue
+		}
 		// 获取所有可以调度的Job，按照优先级、时间和初次调度周期排序
 		jobs := curQueue.GetSchedulableJobs()
 		for len(jobs) > 0 {
