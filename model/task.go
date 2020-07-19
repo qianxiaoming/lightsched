@@ -36,6 +36,7 @@ func IsFinishState(state TaskState) bool {
 	return state == TaskCompleted || state == TaskFailed || state == TaskAborted || state == TaskTerminated
 }
 
+// TaskStateToString 返回Task状态的文字表达
 func TaskStateToString(state TaskState) string {
 	switch state {
 	case TaskQueued:

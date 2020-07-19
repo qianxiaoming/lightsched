@@ -25,7 +25,7 @@ func (node *NodeServer) sendHeartbeat() error {
 		node.heartbeat.payload = make(map[string]*message.TaskReport)
 	}
 	hb := &message.Heartbeat{
-		Name:    node.config.hostname,
+		Name:    node.config.Hostname,
 		CPU:     cpu[0],
 		Memory:  mem.UsedPercent,
 		Payload: payload,

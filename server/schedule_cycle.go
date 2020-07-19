@@ -43,7 +43,7 @@ func scheduleOneTask(svc *APIServer, task *model.Task, nodes []*scheduleNode) *s
 			nv, ok := node.node.Labels[k]
 			if !ok || nv != v {
 				passed = false
-				if svc.schedLog {
+				if svc.config.SchedLog {
 					log.Printf("  Task %s failed scheduling to %s because of label %s", task.ID, node.node.Name, k)
 				}
 				break
@@ -57,7 +57,7 @@ func scheduleOneTask(svc *APIServer, task *model.Task, nodes []*scheduleNode) *s
 			nv, ok := node.node.Taints[k]
 			if ok && nv == v {
 				passed = false
-				if svc.schedLog {
+				if svc.config.SchedLog {
 					log.Printf("  Task %s failed scheduling to %s because of taints %s", task.ID, node.node.Name, k)
 				}
 				break
@@ -89,12 +89,12 @@ func scheduleOneTask(svc *APIServer, task *model.Task, nodes []*scheduleNode) *s
 				target = node
 			}
 		} else {
-			if svc.schedLog {
+			if svc.config.SchedLog {
 				log.Printf("  Task %s failed scheduling to %s: %s need %v but %v offered", task.ID, node.node.Name, res, need, offered)
 			}
 		}
 	}
-	if target != nil && svc.schedLog {
+	if target != nil && svc.config.SchedLog {
 		log.Printf("  Task %s is scheduled to %s with score %f", task.ID, target.node.Name, maxScore)
 	}
 	return target

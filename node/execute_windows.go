@@ -91,7 +91,7 @@ func (node *NodeServer) runExecuteTask(msg *message.JSON) {
 		}
 		// 将日志发送给API Server
 		if logs.Len() > 0 {
-			url := fmt.Sprintf(node.config.logURL, task.ID)
+			url := fmt.Sprintf(node.config.LogURL, task.ID)
 			if _, err := http.Post(url, "text/plain", bytes.NewReader([]byte(logs.String()))); err != nil {
 				log.Printf("Unable to post logs for task %s: %v\n", task.ID, err)
 			}

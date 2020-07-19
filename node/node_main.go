@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -19,6 +20,7 @@ import (
 	"github.com/qianxiaoming/lightsched/constant"
 	"github.com/qianxiaoming/lightsched/message"
 	"github.com/qianxiaoming/lightsched/model"
+	"github.com/qianxiaoming/lightsched/util"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/host"
 	"github.com/shirou/gopsutil/mem"
@@ -26,11 +28,11 @@ import (
 
 // Config 是Node Server的配置信息
 type Config struct {
-	apiserver string
-	hostname  string
-	heartbeat time.Duration
-	logPath   string
-	logURL    string
+	Apiserver string        `json:"server"`
+	Hostname  string        `json:"hostname"`
+	Heartbeat time.Duration `json:"-"`
+	LogPath   string        `json:"log_path"`
+	LogURL    string        `json:"-"`
 }
 
 type TaskUpdate struct {
@@ -61,31 +63,72 @@ type NodeServer struct {
 	update     chan *TaskUpdate
 }
 
-// NewNodeServer 创建1个NodeServer实例
-func NewNodeServer(apiserver string, hostname string) *NodeServer {
-	if len(apiserver) == 0 {
-		apiserver = os.Getenv("LIGHTSCHED_APISERVER")
+// NewNodeServer 创建一个NodeServer实例
+func NewNodeServer(confPath string, apiserver string, hostname string, heartbeat int) *NodeServer {
+	// 尝试从配置文件加载设置信息
+	var conf *Config
+	if util.PathExists(confPath) {
+		log.Printf("Load configuration from %s\n", confPath)
+		if b, err := ioutil.ReadFile(confPath); err != nil {
+			log.Printf("Unable to read config file %s: %v\n", confPath, err)
+		} else {
+			conf = &Config{}
+			if err := json.Unmarshal(b, conf); err != nil {
+				log.Printf("Illegal format of the config file %s: %v\n", confPath, err)
+				conf = nil
+			}
+			conf.Heartbeat = time.Second * 2
+		}
+	} else {
+		log.Println("No configuration file found and default setting will be used")
 	}
-	if len(hostname) == 0 {
-		var err error
-		if hostname, err = os.Hostname(); err != nil {
-			log.Printf("Cannot get the host name of this machine: %v", err)
-			return nil
+	if conf == nil {
+		logPath, _ := filepath.Abs("log")
+		name, _ := os.Hostname()
+		conf = &Config{
+			Apiserver: os.Getenv("LIGHTSCHED_APISERVER"),
+			Hostname:  name,
+			Heartbeat: time.Second * 2,
+			LogPath:   logPath,
+			LogURL:    "http://" + apiserver + "/tasks/%s/log",
+		}
+		b, _ := json.MarshalIndent(conf, "", "  ")
+		if err := ioutil.WriteFile(constant.NodeSeverConfigFile, b, 0666); err != nil {
+			log.Printf("Unable to write config file %s: %v\n", constant.NodeSeverConfigFile, err)
 		}
 	}
-	logPath, _ := filepath.Abs("log")
+	if len(apiserver) != 0 {
+		conf.Apiserver = apiserver
+		conf.LogURL = "http://" + apiserver + "/tasks/%s/log"
+	}
+	if len(hostname) != 0 {
+		conf.Hostname = hostname
+	}
+	if heartbeat > 0 {
+		conf.Heartbeat = time.Second * time.Duration(heartbeat)
+	}
+
+	// 配置日志信息
+	if len(conf.LogPath) > 0 {
+		if err := util.MakeDirAll(conf.LogPath); err != nil {
+			log.Printf("Cannot create log directory %s: %v\n", conf.LogPath, err)
+		} else {
+			filename := filepath.Join(conf.LogPath, fmt.Sprintf(constant.NodeSeverLogFile, conf.Hostname))
+			if logFile, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0766); err != nil {
+				log.Printf("Cannot open log file %s: %v\n", filename, err)
+			} else {
+				log.SetOutput(io.MultiWriter(os.Stdout, logFile))
+				log.SetFlags(log.LstdFlags | log.LUTC)
+			}
+		}
+	}
+
 	return &NodeServer{
-		config: Config{
-			apiserver: apiserver,
-			hostname:  hostname,
-			heartbeat: time.Second * 2,
-			logPath:   logPath,
-			logURL:    "http://" + apiserver + "/tasks/%s/log",
-		},
-		state: model.NodeUnknown,
+		config: *conf,
+		state:  model.NodeUnknown,
 		heartbeat: Heartbeat{
 			errors:  0,
-			url:     "http://" + apiserver + "/heartbeat",
+			url:     "http://" + conf.Apiserver + "/heartbeat",
 			payload: make(map[string]*message.TaskReport),
 		},
 		executings: make(map[string]TaskProcess),
@@ -96,10 +139,10 @@ func NewNodeServer(apiserver string, hostname string) *NodeServer {
 // Run 是Node Server的主运行逻辑，返回时服务即结束运行
 func (node *NodeServer) Run(cpustr string, gpustr string, memorystr string, labelstr string) int {
 	log.Println("Light Scheduler Node Server is starting up...")
-	log.Printf("    API Server:    %s", node.config.apiserver)
-	log.Printf("    Host Name:     %s", node.config.hostname)
-	log.Printf("    Log Path:      %s", node.config.logPath)
-	log.Printf("    Heartbeat:     %s", node.config.heartbeat)
+	log.Printf("    API Server:    %s", node.config.Apiserver)
+	log.Printf("    Host Name:     %s", node.config.Hostname)
+	log.Printf("    Log Path:      %s", node.config.LogPath)
+	log.Printf("    Heartbeat:     %s", node.config.Heartbeat)
 
 	// 记录传入的label信息
 	if len(labelstr) > 0 {
@@ -120,7 +163,7 @@ func (node *NodeServer) Run(cpustr string, gpustr string, memorystr string, labe
 	}
 
 	// 启动定时器并等待系统中断信号
-	timer := time.NewTimer(node.config.heartbeat)
+	timer := time.NewTimer(node.config.Heartbeat)
 	quit := make(chan os.Signal)
 	signal.Notify(quit, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
@@ -149,11 +192,11 @@ func (node *NodeServer) Run(cpustr string, gpustr string, memorystr string, labe
 				node.executings[update.status.ID] = TaskProcess{update.process, false}
 			}
 		case <-timer.C:
-			timeout := node.config.heartbeat
+			timeout := node.config.Heartbeat
 			if node.state == model.NodeUnknown {
 				// 初始状态或访问API Server失败，进入重新注册阶段
 				if err := node.registerSelf(); err != nil {
-					timeout = node.config.heartbeat * 5
+					timeout = node.config.Heartbeat * 5
 				}
 			} else if node.state == model.NodeOnline {
 				// 正常状态下发送心跳信息
@@ -166,7 +209,7 @@ func (node *NodeServer) Run(cpustr string, gpustr string, memorystr string, labe
 						node.state = model.NodeUnknown
 						node.heartbeat.errors = 0
 					} else {
-						timeout = node.config.heartbeat * 3
+						timeout = node.config.Heartbeat * 3
 					}
 				}
 			}
@@ -309,15 +352,15 @@ func (node *NodeServer) registerSelf() error {
 	if node.state == model.NodeOffline {
 		return nil
 	}
-	log.Printf("Register node to API Server %s as %s...\n", node.config.apiserver, node.config.hostname)
+	log.Printf("Register node to API Server %s as %s...\n", node.config.Apiserver, node.config.Hostname)
 	msg := &message.RegisterNode{
-		Name:      node.config.hostname,
+		Name:      node.config.Hostname,
 		Platform:  node.platform,
 		Labels:    node.labels,
 		Resources: node.resources,
 	}
 	content, _ := json.Marshal(msg)
-	if resp, err := http.Post("http://"+node.config.apiserver+"/nodes", "application/json", bytes.NewReader(content)); err == nil {
+	if resp, err := http.Post("http://"+node.config.Apiserver+"/nodes", "application/json", bytes.NewReader(content)); err == nil {
 		defer resp.Body.Close()
 		body, _ := ioutil.ReadAll(resp.Body)
 		if resp.StatusCode == http.StatusOK {

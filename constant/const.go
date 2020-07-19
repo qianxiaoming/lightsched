@@ -14,6 +14,14 @@ const (
 )
 
 const (
+	// APISeverConfigFile 是API Server的配置文件名称
+	APISeverConfigFile = "api-server.conf"
+	// APISeverLogFile 是API Server的日志文件名称
+	APISeverLogFile = "api-server.log"
+	// NodeSeverConfigFile 是Node Server的配置文件名称
+	NodeSeverConfigFile = "node-server.conf"
+	// NodeSeverLogFile 是Node Server的日志文件名称
+	NodeSeverLogFile = "node-%s.log"
 	// DatabaseFileName 是系统默认主数据库的名字
 	DatabaseFileName = "lightsched.db"
 	// DefaultQueueName 是默认作业队列的名字

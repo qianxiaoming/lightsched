@@ -38,7 +38,7 @@ func (svc *APIServer) requestCreateJob(spec *model.JobSpec) error {
 	svc.setScheduleFlag()
 
 	// 创建Job需要的目录。以下功能如果失败不影响任务的执行，因此仅输出日志并不返回失败。
-	dir := filepath.Join(svc.config.dataPath, job.ID)
+	dir := filepath.Join(svc.config.DataPath, job.ID)
 	if err := util.MakeDirAll(dir); err != nil {
 		log.Printf("Unable to create job directory %s: %v\n", dir, err)
 	} else {
@@ -172,7 +172,7 @@ func (svc *APIServer) requestDeleteJob(jobid string) error {
 	if err := svc.state.DeleteJob(jobid); err != nil {
 		return err
 	}
-	dir := filepath.Join(svc.config.dataPath, jobid)
+	dir := filepath.Join(svc.config.DataPath, jobid)
 	if err := os.RemoveAll(dir); err != nil {
 		return err
 	}
@@ -366,7 +366,7 @@ func (svc *APIServer) requestGetTaskLog(id string) io.ReadCloser {
 	if job == nil {
 		return nil
 	}
-	filename := filepath.Join(svc.config.dataPath, jobid, fmt.Sprintf("%d.%d.log", groupid, taskid))
+	filename := filepath.Join(svc.config.DataPath, jobid, fmt.Sprintf("%d.%d.log", groupid, taskid))
 	file, err := os.OpenFile(filename, os.O_RDONLY, 0666)
 	if err != nil {
 		log.Printf("Unable to open log file %s: %v\n", filename, err)
@@ -382,7 +382,7 @@ func (svc *APIServer) requestCheckNodes() {
 	defer svc.nodes.Unlock()
 
 	// 确定所有超时的节点
-	nodes := svc.nodes.CheckTimeoutNodes(svc.config.offline)
+	nodes := svc.nodes.CheckTimeoutNodes(svc.config.Offline)
 	if nodes == nil {
 		return
 	}

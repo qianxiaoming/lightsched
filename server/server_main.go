@@ -2,7 +2,10 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -21,13 +24,14 @@ import (
 
 // Config 是API Server的配置信息
 type Config struct {
-	address  string
-	restPort int
-	nodePort int
-	offline  int
-	dataPath string
-	logPath  string
-	instance string
+	Cluster  string `json:"cluster"`
+	Address  string `json:"address"`
+	RestPort int    `json:"rest"`
+	NodePort int    `json:"node"`
+	Offline  int    `json:"offline"`
+	SchedLog bool   `json:"sched_log"`
+	DataPath string `json:"data_path"`
+	LogPath  string `json:"log_path"`
 }
 
 // HTTPEndpoint 是对不同资源对象提供HTTP API实现的接口
@@ -43,7 +47,6 @@ type APIServer struct {
 	nodes         *data.NodeCache
 	schedFlag     int32
 	schedCycle    int64
-	schedLog      bool
 	restRouter    *gin.Engine
 	nodeRouter    *gin.Engine
 	restEndpoints map[string]HTTPEndpoint
@@ -53,38 +56,97 @@ type APIServer struct {
 var apiserver *APIServer
 
 // NewAPIServer 用以创建和初始化API Server实例
-func NewAPIServer() *APIServer {
-	schedLog := true // false
-	if os.Getenv("LIGHTSCHED_SCHEDULE_LOG") == "YES" {
-		schedLog = true
+func NewAPIServer(confPath string) *APIServer {
+	// 尝试从配置文件加载设置信息。如果配置文件不存在，服务启动时将会按照默认值自动生成。
+	var conf *Config
+	if util.PathExists(confPath) {
+		log.Printf("Load configuration from %s\n", confPath)
+		if b, err := ioutil.ReadFile(confPath); err != nil {
+			log.Printf("Unable to read config file %s: %v\n", confPath, err)
+		} else {
+			conf = &Config{}
+			if err := json.Unmarshal(b, conf); err != nil {
+				log.Printf("Illegal format of the config file %s: %v\n", confPath, err)
+				conf = nil
+			}
+		}
+	} else {
+		log.Println("No configuration file found and default setting will be used")
 	}
+
+	// 生成默认配置
 	dataPath, _ := filepath.Abs("cluster")
 	logPath, _ := filepath.Abs("log")
 	apiserver = &APIServer{
 		config: Config{
-			address:  "",
-			restPort: constant.DefaultRestPort,
-			nodePort: constant.DefaultNodePort,
-			offline:  5,
-			dataPath: dataPath,
-			logPath:  logPath,
-			instance: util.GenerateUUID(),
+			Cluster:  util.GenerateUUID(),
+			Address:  "",
+			RestPort: constant.DefaultRestPort,
+			NodePort: constant.DefaultNodePort,
+			Offline:  8,
+			SchedLog: false,
+			DataPath: dataPath,
+			LogPath:  logPath,
 		},
 		state:         data.NewStateStore(),
 		nodes:         data.NewNodeCache(),
 		schedFlag:     0,
 		schedCycle:    0,
-		schedLog:      schedLog,
 		restEndpoints: make(map[string]HTTPEndpoint),
 		nodeEndpoints: make(map[string]HTTPEndpoint),
+	}
+	if conf == nil {
+		b, _ := json.MarshalIndent(apiserver.config, "", "  ")
+		if err := ioutil.WriteFile(constant.APISeverConfigFile, b, 0666); err != nil {
+			log.Printf("Unable to write config file %s: %v\n", constant.APISeverConfigFile, err)
+		}
+	} else {
+		if len(conf.Cluster) != 0 {
+			apiserver.config.Cluster = conf.Cluster
+		}
+		if len(conf.Address) != 0 {
+			apiserver.config.Address = conf.Address
+		}
+		if conf.RestPort != 0 {
+			apiserver.config.RestPort = conf.RestPort
+		}
+		if conf.NodePort != 0 {
+			apiserver.config.NodePort = conf.NodePort
+		}
+		if conf.Offline != 0 {
+			apiserver.config.Offline = conf.Offline
+		}
+		apiserver.config.SchedLog = conf.SchedLog
+		if len(conf.DataPath) != 0 {
+			apiserver.config.DataPath = conf.DataPath
+		}
+		if len(conf.LogPath) != 0 {
+			apiserver.config.LogPath = conf.LogPath
+		}
+	}
+	apiserver.config.SchedLog = os.Getenv("LIGHTSCHED_SCHEDULE_LOG") == "YES"
+
+	// 配置日志信息
+	if len(apiserver.config.LogPath) > 0 {
+		if err := util.MakeDirAll(apiserver.config.LogPath); err != nil {
+			log.Printf("Cannot create log directory %s: %v\n", apiserver.config.LogPath, err)
+		} else {
+			filename := filepath.Join(apiserver.config.LogPath, constant.APISeverLogFile)
+			if logFile, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0766); err != nil {
+				log.Printf("Cannot open log file %s: %v\n", filename, err)
+			} else {
+				log.SetOutput(io.MultiWriter(os.Stdout, logFile))
+				log.SetFlags(log.LstdFlags | log.LUTC)
+			}
+		}
 	}
 	return apiserver
 }
 
 // Run 是API Server的主运行逻辑，返回时服务即结束运行
 func (svc *APIServer) Run() int {
-	log.Println("Light Scheduler API Server is starting up...")
-	if err := svc.state.InitState(svc.config.dataPath); err != nil {
+	log.Printf("Light Scheduler API Server is starting up with cluster id \"%s\"...\n", svc.config.Cluster)
+	if err := svc.state.InitState(svc.config.DataPath); err != nil {
 		log.Printf("Failed to initialize state data: %v\n", err)
 		return 1
 	}
@@ -98,15 +160,15 @@ func (svc *APIServer) Run() int {
 	nodeEngine.Use(gin.Recovery())
 	svc.registerNodeEndpoint(nodeEngine)
 	httpNode := &http.Server{
-		Addr:         fmt.Sprintf("%s:%d", svc.config.address, svc.config.nodePort),
+		Addr:         fmt.Sprintf("%s:%d", svc.config.Address, svc.config.NodePort),
 		Handler:      nodeEngine,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
 	go util.WaitForStop(&wg, func() {
-		log.Printf("Start Node HTTP Service on %v\n", httpNode.Addr)
+		log.Printf("Start Node HTTP Service on \"%v\"\n", httpNode.Addr)
 		if err := httpNode.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Cannot listen on %s:%d: %s\n", svc.config.address, svc.config.nodePort, err)
+			log.Fatalf("Cannot listen on %s:%d: %s\n", svc.config.Address, svc.config.NodePort, err)
 		}
 	})
 
@@ -117,21 +179,21 @@ func (svc *APIServer) Run() int {
 	restEngine.Static("/portal", "./html")
 	restEngine.StaticFile("/favicon.ico", "./html/favicon.ico")
 	httpRest := &http.Server{
-		Addr:         fmt.Sprintf("%s:%d", svc.config.address, svc.config.restPort),
+		Addr:         fmt.Sprintf("%s:%d", svc.config.Address, svc.config.RestPort),
 		Handler:      restEngine,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
 	go util.WaitForStop(&wg, func() {
-		log.Printf("Start RESTful API Service on %v\n", httpRest.Addr)
+		log.Printf("Start RESTful API Service on \"%v\"\n", httpRest.Addr)
 		if err := httpRest.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Cannot listen on %s:%d: %s\n", svc.config.address, svc.config.restPort, err)
+			log.Fatalf("Cannot listen on %s:%d: %s\n", svc.config.Address, svc.config.RestPort, err)
 		}
 	})
 
 	// 启动定时器并等待系统中断信号
 	timerSched := time.NewTimer(time.Second)
-	timerNode := time.NewTimer(time.Second * time.Duration(svc.config.offline+2))
+	timerNode := time.NewTimer(time.Second * time.Duration(svc.config.Offline+1))
 	quit := make(chan os.Signal)
 	signal.Notify(quit, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
@@ -145,7 +207,7 @@ func (svc *APIServer) Run() int {
 			timerSched.Reset(time.Second)
 		case <-timerNode.C:
 			svc.requestCheckNodes()
-			timerNode.Reset(time.Second * time.Duration(svc.config.offline+2))
+			timerNode.Reset(time.Second * time.Duration(svc.config.Offline+1))
 		}
 	}
 

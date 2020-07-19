@@ -1,6 +1,10 @@
 package cmd
 
 import (
+	"os"
+	"path/filepath"
+
+	"github.com/qianxiaoming/lightsched/constant"
 	"github.com/qianxiaoming/lightsched/server"
 	"github.com/spf13/cobra"
 )
@@ -8,15 +12,16 @@ import (
 // apiCmd represents the api command
 var apiCmd = &cobra.Command{
 	Use:   "api",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Run as API Server",
+	Long: `Run as a API Server of the cluster. API Server accepts jobs submitted by clients and 
+	schedule them to work nodes to execute.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		apisvc := server.NewAPIServer()
+		path, err := os.Executable()
+		if err != nil {
+			panic(err)
+		}
+		confPath := filepath.Join(filepath.Dir(path), constant.APISeverConfigFile)
+		apisvc := server.NewAPIServer(confPath)
 		apisvc.Run()
 	},
 }

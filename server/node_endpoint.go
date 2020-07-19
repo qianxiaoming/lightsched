@@ -29,7 +29,7 @@ func (e NodeRegisterEndpoint) registerRoute() {
 			log.Printf("    GPU Info: %d card(s) %dGi with CUDA %.1f", int(reg.Resources.GPU.Cards), reg.Resources.GPU.Memory, float32(reg.Resources.GPU.CUDA)/100.0)
 			err = apiserver.requestRegisterNode(ip, reg)
 			if err == nil {
-				c.JSON(http.StatusOK, gin.H{"cluster": apiserver.config.instance})
+				c.JSON(http.StatusOK, gin.H{"cluster": apiserver.config.Cluster})
 				log.Println("Node registered")
 			} else {
 				responseError(http.StatusNotAcceptable, "%v", err, c)
@@ -82,7 +82,7 @@ type TaskLogEndpoint struct{}
 func (e TaskLogEndpoint) registerRoute() {
 	apiserver.nodeRouter.POST(e.restPrefix(), func(c *gin.Context) {
 		jobid, gindex, tindex := model.ParseTaskID(c.Param("taskid"))
-		filename := filepath.Join(apiserver.config.dataPath, jobid, fmt.Sprintf("%d.%d.log", gindex, tindex))
+		filename := filepath.Join(apiserver.config.DataPath, jobid, fmt.Sprintf("%d.%d.log", gindex, tindex))
 		file, err := os.OpenFile(filename, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0666)
 		if err != nil {
 			log.Printf("Unable to create log file %s: %v\n", c.Param("taskid"), err)
