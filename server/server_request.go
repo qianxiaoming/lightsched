@@ -106,11 +106,17 @@ func (svc *APIServer) requestUpdateTasks(updates []*message.TaskReport) {
 func (svc *APIServer) requestTerminateJob(id string) error {
 	svc.state.Lock()
 	defer svc.state.Unlock()
-	log.Printf("Terminating Job %s\n", id)
-	if err := svc.state.SetJobState(id, model.JobTerminating); err != nil {
+
+	job := svc.state.GetJob(id)
+	if job.State == model.JobTerminated {
+		log.Printf("Job %s is already in TERMINATED state\n", id)
+		return nil
+	}
+	log.Printf("Terminating Job %s...\n", id)
+	if err := svc.state.SetJobState(id, model.JobTerminated); err != nil {
 		return err
 	}
-	job := svc.state.GetJob(id)
+
 	// 确定所有运行此Job的节点名字
 	nodes := make(map[string]bool)
 	for _, g := range job.Groups {
@@ -122,11 +128,13 @@ func (svc *APIServer) requestTerminateJob(id string) error {
 		}
 	}
 
+	// 给相关节点发送消息终止正在运行的任务
 	svc.nodes.Lock()
 	defer svc.nodes.Unlock()
 	for name := range nodes {
 		svc.nodes.AppendNodeMessage(name, message.KindTerminateJob, id, nil)
 	}
+	log.Println("Job terminated")
 	return nil
 }
 
@@ -135,7 +143,7 @@ func (svc *APIServer) requestListJobs(filterState *model.JobState, sortField mod
 	defer svc.state.RUnlock()
 
 	allJobs := svc.state.QueryJobs(filterState, sortField, offset, limits)
-	if allJobs == nil {
+	if allJobs == nil || len(allJobs) == 0 {
 		return nil
 	}
 
@@ -188,12 +196,14 @@ func (svc *APIServer) requestResumeJob(jobid string) error {
 	defer svc.state.Unlock()
 
 	job := svc.state.GetJob(jobid)
+	job.State = model.JobQueued
 	if job.RefreshState() {
 		if err := svc.state.SetJobState(jobid, job.State); err != nil {
 			return err
 		}
 	}
 	log.Printf("Job %s resumed\n", jobid)
+	svc.setScheduleFlag()
 	return nil
 }
 

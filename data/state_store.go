@@ -187,8 +187,8 @@ func (m *StateStore) DeleteJob(id string) error {
 	if !ok {
 		return fmt.Errorf("Job not found")
 	}
-	if job.State == model.JobExecuting || job.State == model.JobTerminating {
-		return fmt.Errorf("Cannot delete executing jobs")
+	if job.State == model.JobExecuting || job.State == model.JobHalted {
+		return fmt.Errorf("Cannot delete executing or halted jobs")
 	}
 	delete(m.jobMap, id)
 	for i, j := range m.jobList {
@@ -286,6 +286,9 @@ func (m *StateStore) SetJobState(jobid string, state model.JobState) error {
 		return fmt.Errorf("Job identified by \"%s\" not found", jobid)
 	}
 	job.State = state
+	if job.State == model.JobTerminated {
+		job.FinishTime = time.Now()
+	}
 	err := m.boltDB.put("job", job.ID, job.GetJSON(true))
 	if err != nil {
 		return fmt.Errorf("Unable to save job \"%s\"(%s): %v", job.Name, job.ID, err)
