@@ -297,3 +297,12 @@ func (s *GeneralJobSorter) Less(i, j int) bool {
 func (s *GeneralJobSorter) Swap(i, j int) {
 	s.Jobs[i], s.Jobs[j] = s.Jobs[j], s.Jobs[i]
 }
+
+// JobUpdatableProps 包含Job在提交后可以修改的属性
+type JobUpdatableProps struct {
+	Name      string            `json:"name,omitempty"`
+	Priority  *int              `json:"priority,omitempty"`
+	Labels    map[string]string `json:"labels,omitempty"`
+	Taints    map[string]string `json:"taints,omitempty"`
+	MaxErrors *int              `json:"max_errors,omitempty"`
+}

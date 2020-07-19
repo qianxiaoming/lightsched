@@ -40,10 +40,10 @@ func (svc *APIServer) requestCreateJob(spec *model.JobSpec) error {
 	// 创建Job需要的目录。以下功能如果失败不影响任务的执行，因此仅输出日志并不返回失败。
 	dir := filepath.Join(svc.config.dataPath, job.ID)
 	if err := util.MakeDirAll(dir); err != nil {
-		log.Printf("Unable to create job directory %s: %v", dir, err)
+		log.Printf("Unable to create job directory %s: %v\n", dir, err)
 	} else {
 		if err := ioutil.WriteFile(filepath.Join(dir, "job_content.json"), job.GetJSON(false), 0666); err != nil {
-			log.Printf("Unable to write job content under %s: %v", dir, err)
+			log.Printf("Unable to write job content under %s: %v\n", dir, err)
 		}
 		job.JSON = nil
 	}
@@ -172,6 +172,32 @@ func (svc *APIServer) requestDeleteJob(jobid string) error {
 	return nil
 }
 
+func (svc *APIServer) requestModifyJobProps(jobid string, props *model.JobUpdatableProps) error {
+	svc.state.RLock()
+	defer svc.state.RUnlock()
+
+	var job *model.Job
+	if job = svc.state.GetJob(jobid); job == nil {
+		return fmt.Errorf("Job %s not found", jobid)
+	}
+	if len(props.Name) != 0 {
+		job.Name = props.Name
+	}
+	if props.Priority != nil {
+		job.Priority = *props.Priority
+	}
+	if props.MaxErrors != nil {
+		job.MaxErrors = *props.MaxErrors
+	}
+	if props.Labels != nil {
+		job.Labels = props.Labels // TODO 要修改Task的Labels
+	}
+	if props.Taints != nil {
+		job.Taints = props.Taints // TODO 要修改Task的Labels
+	}
+	return nil
+}
+
 func (svc *APIServer) requestListNodes() []*message.NodeInfo {
 	svc.nodes.RLock()
 	defer svc.nodes.RUnlock()
@@ -230,7 +256,7 @@ func (svc *APIServer) requestOnlineNode(name string) error {
 		return fmt.Errorf("Node %s not found", name)
 	}
 	n.State = model.NodeOnline
-	log.Printf("Node %s is in ONLINE state now", name)
+	log.Printf("Node %s is in ONLINE state now\n", name)
 	svc.setScheduleFlag()
 	return nil
 }
@@ -248,7 +274,7 @@ func (svc *APIServer) requestOfflineNode(name string, kill bool) error {
 	if kill {
 		// 目前先不考虑强制杀死在该节点上运行的Task
 	}
-	log.Printf("Node %s is in OFFLINE state now", name)
+	log.Printf("Node %s is in OFFLINE state now\n", name)
 	svc.setScheduleFlag()
 	return nil
 }
@@ -339,7 +365,7 @@ func (svc *APIServer) requestCheckNodes() {
 					continue
 				}
 				if _, ok := nodes[task.NodeName]; ok {
-					log.Printf("Task %s was scheduled to node %s and reschedule it now", task.ID, task.NodeName)
+					log.Printf("Task %s was scheduled to node %s and reschedule it now\n", task.ID, task.NodeName)
 					task.State = model.TaskQueued
 					task.NodeName = ""
 					task.Progress = 0

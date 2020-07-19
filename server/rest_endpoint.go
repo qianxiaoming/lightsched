@@ -30,6 +30,7 @@ func (e JobEndpoint) registerRoute() {
 	apiserver.restRouter.GET(e.restPrefix()+"/:id", e.getJob)
 	apiserver.restRouter.POST(e.restPrefix(), e.createJob)
 	apiserver.restRouter.PUT(e.restPrefix()+"/:id/_terminate", e.terminateJob)
+	apiserver.restRouter.PUT(e.restPrefix()+"/:id", e.modifyJobProps)
 	apiserver.restRouter.DELETE(e.restPrefix()+"/:id", e.deleteJob)
 }
 
@@ -107,6 +108,21 @@ func (e JobEndpoint) terminateJob(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusAccepted)
+}
+
+func (e JobEndpoint) modifyJobProps(c *gin.Context) {
+	id := c.Params.ByName("id")
+	props := &model.JobUpdatableProps{}
+	if err := c.BindJSON(props); err == nil {
+		err = apiserver.requestModifyJobProps(id, props)
+		if err == nil {
+			c.Status(http.StatusOK)
+		} else {
+			responseError(http.StatusBadRequest, "Unable to modify job: %v", err, c)
+		}
+	} else {
+		responseError(http.StatusBadRequest, "Parse request failed: %v", err, c)
+	}
 }
 
 // TaskEndpoint 是Task资源对象的RESTful API实现接口
