@@ -124,7 +124,6 @@ func NewAPIServer(confPath string) *APIServer {
 			apiserver.config.LogPath = conf.LogPath
 		}
 	}
-	apiserver.config.SchedLog = os.Getenv("LIGHTSCHED_SCHEDULE_LOG") == "YES"
 
 	// 配置日志信息
 	if len(apiserver.config.LogPath) > 0 {

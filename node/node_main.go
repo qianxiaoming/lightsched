@@ -207,7 +207,7 @@ func (node *NodeServer) Run(cpustr string, gpustr string, memorystr string, labe
 				} else {
 					// 心跳发送失败时增加失败计数。当计数累加到5时进入未注册状态。
 					node.heartbeat.errors = node.heartbeat.errors + 1
-					if node.heartbeat.errors >= 5 {
+					if node.heartbeat.errors > 3 {
 						node.state = model.NodeUnknown
 						node.heartbeat.errors = 0
 					} else {
