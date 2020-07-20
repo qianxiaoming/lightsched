@@ -152,7 +152,6 @@ func (svc *APIServer) Run() int {
 	defer svc.state.ClearState()
 
 	var wg sync.WaitGroup
-
 	// gin.SetMode(gin.ReleaseMode)
 	// 启动对内节点的HTTP服务
 	nodeEngine := gin.New()
@@ -231,9 +230,10 @@ func (svc *APIServer) setScheduleFlag() {
 func (svc *APIServer) registerRestEndpoint(router *gin.Engine) {
 	svc.restRouter = router
 	// 绑定系统级API路径实现
-	svc.restRouter.GET("/healthz", func(c *gin.Context) {
+	svc.restRouter.GET("/cluster", func(c *gin.Context) {
 		c.JSON(200, gin.H{
-			"status": "ok",
+			"id":    svc.config.Cluster,
+			"cycle": svc.schedCycle,
 		})
 	})
 
