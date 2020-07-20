@@ -3,9 +3,11 @@
 
 #include <cstdint>
 #include <map>
+#include <vector>
 #include <string>
 #include <memory>
 #include <list>
+#include <ctime>
 
 #if defined(WIN32) || defined(_WINDOWS)
 #if defined(LIBLIGHTSCHED_EXPORTS)
@@ -21,7 +23,7 @@
 
 namespace lightsched {
 
-typedef std::map<std::string, std::string> LabelList;
+typedef std::vector<std::string> LabelList;
 
 enum class TaskState { Queued, Scheduled, Dispatching, Executing, Completed, Failed, Aborted, Terminated };
 enum class JobState { Queued, Executing, Halted, Completed, Failed, Terminated };
@@ -42,7 +44,7 @@ typedef std::list<NodeInfo> NodeList;
 class LIGHTSCHED_API ComputingCluster
 {
 public:
-	ComputingCluster(std::string server, uint16_t port);
+	ComputingCluster(std::string server, uint16_t port = APISERVER_PORT);
 
 	bool IsConnected() const;
 
@@ -72,7 +74,7 @@ private:
 	bool        connected;
 };
 
-struct LIGHTSCHED_API ResourceClaim
+struct LIGHTSCHED_API ResourceSet
 {
 
 };
@@ -83,33 +85,33 @@ struct LIGHTSCHED_API TaskSpec
 	TaskSpec(std::string name);
 	TaskSpec(std::string name, std::string cmd, std::string cmd_args);
 
-	std::string   task_name;
-	std::string   command;
-	std::string   command_args;
-	std::string   environments;
-	std::string   labels;
-	std::string   work_dir;
-	ResourceClaim resources;
+	std::string task_name;
+	std::string command;
+	std::string command_args;
+	std::string environments;
+	std::string work_dir;
+	LabelList   labels;
+	ResourceSet resources;
 };
 
 struct LIGHTSCHED_API JobSpec
 {
 	JobSpec();
-	JobSpec(std::string name, const ResourceClaim& claims);
+	JobSpec(std::string name, const ResourceSet& res);
 	JobSpec(std::string name, std::string cmd);
 	JobSpec& AddTask(const TaskSpec& task);
 	JobSpec& AddTask(std::string name, std::string cmd, std::string cmd_args);
 
-	std::string   job_id;
-	std::string   job_name;
-	std::string   environments;
-	std::string   labels;
-	int           priority;
-	int           max_errors;
-	std::string   command;
-	std::string   work_dir;
-	ResourceClaim resources;
-	TaskSpecList  tasks;
+	std::string  job_id;
+	std::string  job_name;
+	std::string  environments;
+	LabelList    labels;
+	int          priority;
+	int          max_errors;
+	std::string  command;
+	std::string  work_dir;
+	ResourceSet  resources;
+	TaskSpecList tasks;
 };
 
 struct LIGHTSCHED_API TaskInfo
@@ -141,25 +143,25 @@ struct LIGHTSCHED_API NodeInfo
 {
 	NodeInfo();
 
-	std::string   name;
-	std::string   address;
-	PlatformInfo  platform;
-	NodeState     state;
-	time_t        online;
-	std::string   labels;
-	ResourceClaim resources;
+	std::string  name;
+	std::string  address;
+	PlatformInfo platform;
+	NodeState    state;
+	time_t       online;
+	LabelList    labels;
+	ResourceSet  resources;
 };
 
 struct LIGHTSCHED_API JobInfo
 {
 	JobInfo();
 
-	JobState          job_state;
-	int32_t           progress;
-	int32_t           total_tasks;
-	time_t            submit_time;
-	time_t            exec_time;
-	time_t            finish_time;
+	JobState job_state;
+	int32_t  progress;
+	int32_t  total_tasks;
+	time_t   submit_time;
+	time_t   exec_time;
+	time_t   finish_time;
 };
 
 class LIGHTSCHED_API Job
@@ -174,10 +176,6 @@ public:
 	bool UpdateJobInfo(JobInfo& info);
 
 	const JobInfo& GetJobInfo() const { return job_info; }
-
-	bool Halt();
-
-	bool Resume();
 
 	// get all tasks
 	TaskInfoList GetTaskList();
