@@ -3,6 +3,7 @@ package node
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -12,6 +13,8 @@ import (
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
 )
+
+var errNodeNotRegistered error = errors.New("node not registered")
 
 func (node *NodeServer) sendHeartbeat() error {
 	cpu, _ := cpu.Percent(0, false)
@@ -41,14 +44,17 @@ func (node *NodeServer) sendHeartbeat() error {
 	} else {
 		defer resp.Body.Close()
 		body, _ := ioutil.ReadAll(resp.Body)
-		if len(body) == 0 {
-			return nil
+		if len(body) != 0 {
+			msgs := make([]*message.JSON, 0)
+			if err = json.Unmarshal(body, &msgs); err != nil {
+				log.Printf("Unable to unmarshal the response for heartbeat: %v", err)
+			} else {
+				node.runServerMessages(msgs)
+			}
 		}
-		msgs := make([]*message.JSON, 0)
-		if err = json.Unmarshal(body, &msgs); err != nil {
-			log.Printf("Unable to unmarshal the response for heartbeat: %v", err)
-		} else {
-			node.runServerMessages(msgs)
+		if resp.StatusCode == http.StatusNotFound {
+			// 节点需要重新注册自己
+			return errNodeNotRegistered
 		}
 	}
 	return nil

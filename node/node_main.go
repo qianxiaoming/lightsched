@@ -205,13 +205,19 @@ func (node *NodeServer) Run(cpustr string, gpustr string, memorystr string, labe
 				if err := node.sendHeartbeat(); err == nil {
 					node.heartbeat.errors = 0
 				} else {
-					// 心跳发送失败时增加失败计数。当计数累加到5时进入未注册状态。
-					node.heartbeat.errors = node.heartbeat.errors + 1
-					if node.heartbeat.errors > 3 {
+					// 是否需要立刻重新注册
+					if err == errNodeNotRegistered {
 						node.state = model.NodeUnknown
 						node.heartbeat.errors = 0
 					} else {
-						timeout = node.config.Heartbeat * 3
+						// 心跳发送失败时增加失败计数。当计数累加到5时进入未注册状态。
+						node.heartbeat.errors = node.heartbeat.errors + 1
+						if node.heartbeat.errors > 3 {
+							node.state = model.NodeUnknown
+							node.heartbeat.errors = 0
+						} else {
+							timeout = node.config.Heartbeat * 3
+						}
 					}
 				}
 			}
