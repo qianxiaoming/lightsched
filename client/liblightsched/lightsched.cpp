@@ -1,4 +1,5 @@
 #include <boost/format.hpp>
+#include <boost/algorithm/string.hpp>
 #include "json/CJsonObject.hpp"
 #include "lightsched.h"
 #include "httputil.h"
@@ -52,10 +53,19 @@ NodeState ToNodeState(const char* state)
 
 ComputingCluster::ComputingCluster(std::string server, uint16_t port) : server_addr(server), httpclient(nullptr)
 {
-	server_port = boost::str(boost::format("%d") % port);
-	httpclient = new HttpClient();
-	std::string result;
-	int code = HttpUtil::Get(server_addr + "/api/v1/healthz", server_port, result);
+	try {
+		httpclient = new HttpClient();
+		if (httpclient->Connect(server_addr, port)) {
+			std::string result;
+			if (httpclient->Get("/cluster", result) == http::status::ok) {
+				neb::CJsonObject json(result);
+				cluster_name = json("id");
+				return;
+			}
+		}
+	} catch (std::exception const&) { }
+	delete httpclient;
+	httpclient = nullptr;
 }
 
 ComputingCluster::~ComputingCluster()
@@ -66,57 +76,91 @@ ComputingCluster::~ComputingCluster()
 
 bool ComputingCluster::IsConnected() const
 {
-	httpclient != nullptr;
+	return httpclient != nullptr;
 }
 
 std::string ComputingCluster::GetName() const
 {
-
+	return cluster_name;
 }
 
 std::string ComputingCluster::GetServerAddr() const
 {
-
+	return server_addr;
 }
 
 bool ComputingCluster::SubmitJob(JobSpec& job_spec, std::string* errmsg)
 {
+	neb::CJsonObject spec;
+	if (!job_spec.job_id.empty())
+		spec.Add("id", job_spec.job_id);
+	spec.Add("name", job_spec.job_name);
+	spec.Add("queue", "default");
+	spec.Add("priority", job_spec.priority);
+	spec.Add("schedulable", true);
+	spec.Add("max_errors", job_spec.max_errors);
+	if (!job_spec.labels.empty()) {
+		spec.AddEmptySubObject("labels");
+		for (LabelList::iterator it = job_spec.labels.begin(); it != job_spec.labels.end(); it++) {
+			spec["labels"].Add(it->first, it->second);
+		}
+	}
+	spec.AddEmptySubArray("groups");
 
+	neb::CJsonObject group;
+	if (!job_spec.environments.empty()) {
+		std::vector<std::string> envs;
+		boost::algorithm::split(envs, job_spec.environments, [](char c) { return c == ';'; });
+		spec["groups"].AddEmptySubArray("envs");
+		for (size_t i = 0; i < envs.size(); i++)
+			spec["groups"]["envs"].Add(envs[i]);
+	}
+	if (!job_spec.command.empty())
+		group.Add("command", job_spec.command);
+	if (!job_spec.work_dir.empty())
+		group.Add("workdir", job_spec.work_dir);
+	spec.Add("groups", group);
+
+	std::cout << spec.ToFormattedString() << std::endl;
+
+	return true;
 }
 
 bool ComputingCluster::TerminateJob(std::string id)
 {
-
+	return true;
 }
 
 bool ComputingCluster::DeleteJob(std::string id)
 {
-
+	return true;
 }
 
 JobPtr ComputingCluster::QueryJob(std::string id) const
 {
-
+	return JobPtr();
 }
 
 JobList ComputingCluster::QueryJobList(JobState* state, int offset, int limits) const
 {
-
+	JobList jobs;
+	return jobs;
 }
 
 NodeList ComputingCluster::GetNodeList() const
 {
-
+	NodeList nodes;
+	return nodes;
 }
 
 bool ComputingCluster::OfflineNode(std::string name)
 {
-
+	return true;
 }
 
 bool ComputingCluster::OnlineNode(std::string name)
 {
-
+	return true;
 }
 
 ResourceSet::ResourceSet() 
@@ -149,7 +193,6 @@ bool ResourceSet::IsNull() const
 
 TaskSpec::TaskSpec()
 {
-
 }
 
 TaskSpec::TaskSpec(std::string name) : task_name(name)
@@ -166,12 +209,12 @@ JobSpec::JobSpec() : priority(1000), max_errors(0)
 }
 
 JobSpec::JobSpec(std::string name, const ResourceSet& res) 
-	: job_name(name), priority(1000), resources(res)
+	: job_name(name), priority(1000), max_errors(0), resources(res)
 {
 }
 
 JobSpec::JobSpec(std::string name, std::string cmd)
-	: job_name(name), priority(1000), command(cmd)
+	: job_name(name), priority(1000), max_errors(0), command(cmd)
 {
 }
 
@@ -188,7 +231,8 @@ JobSpec& JobSpec::AddTask(std::string name, std::string cmd, std::string cmd_arg
 	return *this;
 }
 
-TaskInfo::TaskInfo() : task_state(TaskState::Queued), progress(0), start_time(0), finish_time(0), exit_code(0)
+TaskInfo::TaskInfo() 
+	: task_state(TaskState::Queued), progress(0), start_time(0), finish_time(0), exit_code(0)
 {
 }
 
@@ -200,47 +244,46 @@ bool TaskInfo::IsFinished() const
 
 NodeInfo::NodeInfo()
 {
-
 }
 
 JobInfo::JobInfo()
 {
-
 }
 
 Job::Job(ComputingCluster* c, std::string id)
 {
-
 }
 
 bool Job::UpdateJobInfo(JobInfo& info)
 {
-
+	return true;
 }
 
 TaskInfoList Job::GetTaskList()
 {
-
+	TaskInfoList tasks;
+	return tasks;
 }
 
 TaskInfo Job::GetTask(std::string id)
 {
-
+	TaskInfo info;
+	return info;
 }
 
 bool Job::UpdateTaskInfo(TaskInfoList& tasks)
 {
-
+	return true;
 }
 
 bool Job::TerminateTask(std::string task_id)
 {
-
+	return true;
 }
 
 std::string Job::GetTaskLog(std::string task_id)
 {
-
+	return "";
 }
 
 }

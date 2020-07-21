@@ -23,7 +23,7 @@
 
 namespace lightsched {
 
-typedef std::vector<std::string> LabelList;
+typedef std::map<std::string, std::string> LabelList;
 
 enum class TaskState { Queued, Scheduled, Dispatching, Executing, Completed, Failed, Aborted, Terminated };
 enum class JobState { Queued, Executing, Halted, Completed, Failed, Terminated };
@@ -73,7 +73,6 @@ public:
 
 private:
 	std::string server_addr;
-	std::string server_port;
 	std::string cluster_name;
 	HttpClient* httpclient;
 };
