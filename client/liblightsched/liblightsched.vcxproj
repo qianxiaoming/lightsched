@@ -158,9 +158,11 @@
     <ClInclude Include="json\cJSON.h" />
     <ClInclude Include="json\CJsonObject.hpp" />
     <ClInclude Include="lightsched.h" />
+    <ClInclude Include="httputil.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="httputil.cpp" />
     <ClCompile Include="json\cJSON.c" />
     <ClCompile Include="json\CJsonObject.cpp" />
     <ClCompile Include="lightsched.cpp" />

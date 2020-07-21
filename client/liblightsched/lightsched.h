@@ -31,6 +31,7 @@ enum class NodeState { Online, Offline, Unknown };
 
 const uint16_t APISERVER_PORT = 20516;
 
+class HttpClient;
 class Job;
 struct JobSpec;
 struct TaskSpec;
@@ -45,6 +46,8 @@ class LIGHTSCHED_API ComputingCluster
 {
 public:
 	ComputingCluster(std::string server, uint16_t port = APISERVER_PORT);
+
+	~ComputingCluster();
 
 	bool IsConnected() const;
 
@@ -70,13 +73,25 @@ public:
 
 private:
 	std::string server_addr;
+	std::string server_port;
 	std::string cluster_name;
-	bool        connected;
+	HttpClient* httpclient;
 };
 
 struct LIGHTSCHED_API ResourceSet
 {
+	ResourceSet();
+	void SetCPU(float count, int frequency = 0);
+	void SetMemory(int megabytes);
+	void SetGPU(int gpus, int min_memory, int min_cuda);
+	bool IsNull() const;
 
+	float num_cpus;
+	int cpu_freq;
+	int memory;
+	int num_gpus;
+	int gpu_memory;
+	int cuda;
 };
 
 struct LIGHTSCHED_API TaskSpec

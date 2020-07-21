@@ -27,6 +27,9 @@
     <ClInclude Include="lightsched.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="httputil.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -39,6 +42,9 @@
       <Filter>json</Filter>
     </ClCompile>
     <ClCompile Include="lightsched.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="httputil.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
