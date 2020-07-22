@@ -152,7 +152,7 @@ func (svc *APIServer) Run() int {
 	defer svc.state.ClearState()
 
 	var wg sync.WaitGroup
-	// gin.SetMode(gin.ReleaseMode)
+	gin.SetMode(gin.ReleaseMode)
 	// 启动对内节点的HTTP服务
 	nodeEngine := gin.New()
 	nodeEngine.Use(gin.Recovery())
