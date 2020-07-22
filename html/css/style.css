@@ -1,0 +1,40 @@
+#intro h1 {
+    font-size: 42px;
+    text-align: left;
+    margin-top: 18px;
+}
+
+#intro p {
+    text-align: right;
+    margin-bottom: 0px;
+}
+
+.jumbotron {
+    padding: 1rem 2rem;
+    margin-bottom: 0rem;
+    background-color: #e9ecef;
+    border-radius: .3rem;
+}
+
+#intro img {
+    margin-top: 18px;
+    margin-right: 9px;
+}
+
+#middle p {
+    margin-top: 20px;
+}
+
+#middle {
+    margin-top: 30px;
+}
+
+.progress {
+    text-align: center;
+    width: 100px;
+    margin-top: 10px;
+}
+
+#intro h1 {
+    font-size: 50px;
+}
