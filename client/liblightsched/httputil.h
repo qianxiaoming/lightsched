@@ -25,6 +25,12 @@ public:
 
 	http::status Get(const std::string& target, std::string& response);
 
+	http::status Post(const std::string& target, const std::string& body, std::string& response);
+
+	http::status Put(const std::string& target, const std::string& body, std::string& response);
+
+	http::status Delete(const std::string& target, std::string& response);
+
 private:
 	std::string server_host;
 	boost::asio::io_context ioc;

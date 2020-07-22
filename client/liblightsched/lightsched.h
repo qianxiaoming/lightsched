@@ -7,7 +7,6 @@
 #include <string>
 #include <memory>
 #include <list>
-#include <ctime>
 
 #if defined(WIN32) || defined(_WINDOWS)
 #if defined(LIBLIGHTSCHED_EXPORTS)
@@ -51,6 +50,8 @@ public:
 
 	bool IsConnected() const;
 
+	HttpClient* GetHttpClient() const;
+
 	std::string GetName() const;
 
 	std::string GetServerAddr() const;
@@ -61,11 +62,11 @@ public:
 
 	bool DeleteJob(std::string id);
 
-	JobPtr QueryJob(std::string id) const;
+	JobPtr QueryJob(std::string id);
 
-	JobList QueryJobList(JobState* state = nullptr, int offset = 0, int limits = -1) const;
+	JobList QueryJobList(JobState* state = nullptr, int offset = 0, int limits = -1);
 
-	NodeList GetNodeList() const;
+	NodeList GetNodeList();
 
 	bool OfflineNode(std::string name);
 
@@ -82,7 +83,7 @@ struct LIGHTSCHED_API ResourceSet
 	ResourceSet();
 	void SetCPU(float count, int frequency = 0);
 	void SetMemory(int megabytes);
-	void SetGPU(int gpus, int min_memory, int min_cuda);
+	void SetGPU(int gpus, int gigabytes, int min_cuda);
 	bool IsNull() const;
 
 	float num_cpus;
@@ -91,6 +92,7 @@ struct LIGHTSCHED_API ResourceSet
 	int num_gpus;
 	int gpu_memory;
 	int cuda;
+	std::map<std::string, std::string> others;
 };
 
 struct LIGHTSCHED_API TaskSpec
@@ -139,8 +141,8 @@ struct LIGHTSCHED_API TaskInfo
 	int32_t     progress;
 	std::string message;
 	std::string exec_node;
-	time_t      start_time;
-	time_t      finish_time;
+	std::string start_time;
+	std::string finish_time;
 	uint32_t    exit_code;
 };
 typedef std::list<TaskInfo> TaskInfoList;
@@ -148,7 +150,7 @@ typedef std::list<TaskInfo> TaskInfoList;
 struct PlatformInfo
 {
 	std::string kind;
-	std::string os;
+	std::string name;
 	std::string family;
 	std::string version;
 };
@@ -161,7 +163,7 @@ struct LIGHTSCHED_API NodeInfo
 	std::string  address;
 	PlatformInfo platform;
 	NodeState    state;
-	time_t       online;
+	std::string  online;
 	LabelList    labels;
 	ResourceSet  resources;
 };
@@ -170,12 +172,12 @@ struct LIGHTSCHED_API JobInfo
 {
 	JobInfo();
 
-	JobState job_state;
-	int32_t  progress;
-	int32_t  total_tasks;
-	time_t   submit_time;
-	time_t   exec_time;
-	time_t   finish_time;
+	JobState    job_state;
+	int32_t     progress;
+	int32_t     total_tasks;
+	std::string submit_time;
+	std::string exec_time;
+	std::string finish_time;
 };
 
 class LIGHTSCHED_API Job
@@ -191,15 +193,13 @@ public:
 
 	const JobInfo& GetJobInfo() const { return job_info; }
 
-	// get all tasks
+	JobInfo& GetJobInfo() { return job_info; }
+
 	TaskInfoList GetTaskList();
 
-	TaskInfo GetTask(std::string id);
+	bool GetTask(std::string task_id, TaskInfo& info);
 
-	// update task status in passed list
 	bool UpdateTaskInfo(TaskInfoList& tasks);
-
-	bool TerminateTask(std::string task_id);
 
 	std::string GetTaskLog(std::string task_id);
 
@@ -208,6 +208,10 @@ private:
 	JobSpec           job_spec;
 	JobInfo           job_info;
 };
+
+LIGHTSCHED_API const char* ToString(JobState state);
+LIGHTSCHED_API JobState ToJobState(const char* state);
+LIGHTSCHED_API TaskState ToTaskState(const char* state);
 
 }
 

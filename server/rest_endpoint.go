@@ -6,8 +6,10 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/qianxiaoming/lightsched/message"
 	"github.com/qianxiaoming/lightsched/model"
 )
 
@@ -151,7 +153,13 @@ type TaskEndpoint struct{}
 func (e TaskEndpoint) registerRoute() {
 	apiserver.restRouter.GET(e.restPrefix(), func(c *gin.Context) {
 		c.Status(http.StatusNotFound)
-		tasks := apiserver.requestGetJobTasks(c.Query("jobid"))
+		var tasks []*message.TaskStatus
+		if jobid := c.Query("jobid"); len(jobid) > 0 {
+			tasks = apiserver.requestGetJobTasks(jobid)
+		} else if ids := c.Query("ids"); len(ids) > 0 {
+			taskIDs := strings.Split(ids, ",")
+			tasks = apiserver.requestGetTasks(taskIDs)
+		}
 		if tasks != nil {
 			c.JSON(http.StatusOK, tasks)
 		}

@@ -78,6 +78,9 @@ func NewNodeServer(confPath string, apiserver string, hostname string, heartbeat
 				conf = nil
 			}
 			conf.Heartbeat = time.Second * 2
+			if len(conf.Hostname) == 0 {
+				conf.Hostname, _ = os.Hostname()
+			}
 		}
 	} else {
 		log.Println("No configuration file found and default setting will be used")

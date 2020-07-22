@@ -248,7 +248,7 @@ func (svc *APIServer) requestListNodes() []*message.NodeInfo {
 			Address:   n.Address,
 			Platform:  n.Platform,
 			State:     n.State,
-			Online:    n.Online,
+			Online:    n.Online.Local().Format("2006-01-02 15:04:05"),
 			Labels:    util.CloneMap(n.Labels),
 			Taints:    util.CloneMap(n.Taints),
 			Resources: n.Resources.Clone(),
@@ -273,7 +273,7 @@ func (svc *APIServer) requestGetNode(name string) *message.NodeInfo {
 		Address:   n.Address,
 		Platform:  n.Platform,
 		State:     n.State,
-		Online:    n.Online,
+		Online:    n.Online.Local().Format("2006-01-02 15:04:05"),
 		Labels:    util.CloneMap(n.Labels),
 		Taints:    util.CloneMap(n.Taints),
 		Resources: n.Resources.Clone(),
@@ -325,6 +325,25 @@ func (svc *APIServer) requestGetTask(id string) *message.TaskInfo {
 	}
 	task := job.Groups[groupid].Tasks[taskid]
 	return message.NewTaskInfo(task)
+}
+
+func (svc *APIServer) requestGetTasks(ids []string) []*message.TaskStatus {
+	svc.state.RLock()
+	defer svc.state.RUnlock()
+
+	infos := make([]*message.TaskStatus, 0, len(ids))
+	for _, id := range ids {
+		jobid, groupid, taskid := model.ParseTaskID(id)
+		job := svc.state.GetJob(jobid)
+		if job == nil {
+			continue
+		}
+		infos = append(infos, message.NewTaskStatus(job.Groups[groupid].Tasks[taskid]))
+	}
+	if len(infos) == 0 {
+		return nil
+	}
+	return infos
 }
 
 func (svc *APIServer) requestGetJobTasks(id string) []*message.TaskStatus {

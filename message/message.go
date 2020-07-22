@@ -2,7 +2,6 @@ package message
 
 import (
 	"strings"
-	"time"
 
 	"github.com/qianxiaoming/lightsched/model"
 	"github.com/qianxiaoming/lightsched/util"
@@ -57,21 +56,20 @@ type Heartbeat struct {
 
 // JobInfo 返回给客户端的Job信息
 type JobInfo struct {
-	ID          string            `json:"id"`
-	Name        string            `json:"name"`
-	Queue       string            `json:"queue"`
-	Priority    int               `json:"priority"`
-	Labels      map[string]string `json:"labels,omitempty"`
-	Taints      map[string]string `json:"taints,omitempty"`
-	Schedulable bool              `json:"schedulable"`
-	MaxErrors   int               `json:"max_errors"`
-	Groups      []string          `json:"groups"`
-	SubmitTime  time.Time         `json:"submit_time"`
-	ExecTime    *time.Time        `json:"exec_time,omitempty"`
-	FinishTime  *time.Time        `json:"finish_time,omitempty"`
-	State       model.JobState    `json:"state"`
-	Progress    int               `json:"progress"`
-	TotalTasks  int               `json:"tasks"`
+	ID         string            `json:"id"`
+	Name       string            `json:"name"`
+	Queue      string            `json:"queue"`
+	Priority   int               `json:"priority"`
+	Labels     map[string]string `json:"labels,omitempty"`
+	Taints     map[string]string `json:"taints,omitempty"`
+	MaxErrors  int               `json:"max_errors"`
+	Groups     []string          `json:"groups"`
+	SubmitTime string            `json:"submit_time"`
+	ExecTime   string            `json:"exec_time,omitempty"`
+	FinishTime string            `json:"finish_time,omitempty"`
+	State      model.JobState    `json:"state"`
+	Progress   int               `json:"progress"`
+	TotalTasks int               `json:"tasks"`
 }
 
 // NewJobInfo 根据Job创建对应的信息体
@@ -85,9 +83,9 @@ func NewJobInfo(job *model.Job) *JobInfo {
 		Taints:     job.Taints,
 		MaxErrors:  job.MaxErrors,
 		Groups:     make([]string, 0, len(job.Groups)),
-		SubmitTime: job.SubmitTime,
-		ExecTime:   nil,
-		FinishTime: nil,
+		SubmitTime: job.SubmitTime.Local().Format("2006-01-02 15:04:05"),
+		ExecTime:   "",
+		FinishTime: "",
 		State:      job.State,
 		Progress:   job.Progress,
 		TotalTasks: job.TotalTasks,
@@ -96,18 +94,27 @@ func NewJobInfo(job *model.Job) *JobInfo {
 		info.Groups = append(info.Groups, g.Name)
 	}
 	if !job.ExecTime.IsZero() {
-		info.ExecTime = &time.Time{}
-		*info.ExecTime = job.ExecTime
+		info.ExecTime = job.ExecTime.Local().Format("2006-01-02 15:04:05")
 	}
 	if !job.FinishTime.IsZero() {
-		info.FinishTime = &time.Time{}
-		*info.FinishTime = job.FinishTime
+		info.FinishTime = job.FinishTime.Local().Format("2006-01-02 15:04:05")
 	}
 	return info
 }
 
 // NodeInfo 返回给客户端的计算节点信息
-type NodeInfo model.WorkNode
+type NodeInfo struct {
+	Name      string             `json:"name"`
+	Address   string             `json:"address"`
+	Platform  model.PlatformInfo `json:"platform"`
+	State     model.NodeState    `json:"state"`
+	Online    string             `json:"online"`
+	Labels    map[string]string  `json:"labels,omitempty"`
+	Taints    map[string]string  `json:"taints,omitempty"`
+	Resources *model.ResourceSet `json:"resources,omitempty"`
+	Reserved  *model.ResourceSet `json:"reserved,omitempty"`
+	Available *model.ResourceSet `json:"available,omitempty"`
+}
 
 // TaskInfo 返回给客户端的计算任务信息
 type TaskInfo struct {
@@ -125,8 +132,8 @@ type TaskInfo struct {
 	Progress   int                `json:"progress"`
 	ExitCode   int                `json:"exit_code"`
 	Error      string             `json:"error,omitempty"`
-	StartTime  *time.Time         `json:"start_time,omitempty"`
-	FinishTime *time.Time         `json:"finish_time,omitempty"`
+	StartTime  string             `json:"start_time,omitempty"`
+	FinishTime string             `json:"finish_time,omitempty"`
 }
 
 // NewTaskInfo 根据Task创建对应的信息体
@@ -146,16 +153,14 @@ func NewTaskInfo(task *model.Task) *TaskInfo {
 		Progress:   task.Progress,
 		ExitCode:   task.ExitCode,
 		Error:      task.Error,
-		StartTime:  nil,
-		FinishTime: nil,
+		StartTime:  "",
+		FinishTime: "",
 	}
 	if !task.StartTime.IsZero() {
-		info.StartTime = &time.Time{}
-		*info.StartTime = task.StartTime
+		info.StartTime = task.StartTime.Local().Format("2006-01-02 15:04:05")
 	}
 	if !task.FinishTime.IsZero() {
-		info.FinishTime = &time.Time{}
-		*info.FinishTime = task.FinishTime
+		info.FinishTime = task.FinishTime.Local().Format("2006-01-02 15:04:05")
 	}
 	return info
 }
@@ -170,8 +175,8 @@ type TaskStatus struct {
 	Progress   int               `json:"progress"`
 	ExitCode   int               `json:"exit_code"`
 	Error      string            `json:"error,omitempty"`
-	StartTime  *time.Time        `json:"start_time,omitempty"`
-	FinishTime *time.Time        `json:"finish_time,omitempty"`
+	StartTime  string            `json:"start_time,omitempty"`
+	FinishTime string            `json:"finish_time,omitempty"`
 }
 
 // NewTaskStatus 根据Task创建对应的状态信息体
@@ -185,16 +190,14 @@ func NewTaskStatus(task *model.Task) *TaskStatus {
 		Progress:   task.Progress,
 		ExitCode:   task.ExitCode,
 		Error:      task.Error,
-		StartTime:  nil,
-		FinishTime: nil,
+		StartTime:  "",
+		FinishTime: "",
 	}
 	if !task.StartTime.IsZero() {
-		info.StartTime = &time.Time{}
-		*info.StartTime = task.StartTime
+		info.StartTime = task.StartTime.Local().Format("2006-01-02 15:04:05")
 	}
 	if !task.FinishTime.IsZero() {
-		info.FinishTime = &time.Time{}
-		*info.FinishTime = task.FinishTime
+		info.FinishTime = task.FinishTime.Local().Format("2006-01-02 15:04:05")
 	}
 	return info
 }

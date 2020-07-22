@@ -46,4 +46,54 @@ http::status HttpClient::Get(const std::string& target, std::string& response)
     return res.result();
 }
 
+http::status HttpClient::Post(const std::string& target, const std::string& body, std::string& response)
+{
+    http::request<http::string_body> req{ http::verb::post, target, 11 };
+    req.set(http::field::host, server_host);
+    req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
+    if (!body.empty()) {
+        req.body() = body;
+        req.prepare_payload();
+    }
+    http::write(*stream, req);
+
+    beast::flat_buffer buffer;
+    http::response<http::string_body> res;
+    http::read(*stream, buffer, res);
+    response = res.body();
+    return res.result();
+}
+
+http::status HttpClient::Put(const std::string& target, const std::string& body, std::string& response)
+{
+    http::request<http::string_body> req{ http::verb::put, target, 11 };
+    req.set(http::field::host, server_host);
+    req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
+    if (!body.empty()) {
+        req.body() = body;
+        req.prepare_payload();
+    }
+    http::write(*stream, req);
+
+    beast::flat_buffer buffer;
+    http::response<http::string_body> res;
+    http::read(*stream, buffer, res);
+    response = res.body();
+    return res.result();
+}
+
+http::status HttpClient::Delete(const std::string& target, std::string& response)
+{
+    http::request<http::string_body> req{ http::verb::delete_, target, 11 };
+    req.set(http::field::host, server_host);
+    req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
+    http::write(*stream, req);
+
+    beast::flat_buffer buffer;
+    http::response<http::string_body> res;
+    http::read(*stream, buffer, res);
+    response = res.body();
+    return res.result();
+}
+
 }
