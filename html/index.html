@@ -10,10 +10,15 @@
     <script src="js/wit3d.js"></script>
     <script>
         $(document).ready(function () {
-            $("#myDiv").click(function () {
-                $("#myDiv").load("banner.txt");
+            $.ajax({
+                url : "../nodes",
+                success : function(result) {
+                    initNodeList(result, "#nodesDIV", "#nodeTemplate")
+                },
+                error : function(e){
+                    $("#nodes-div").html("<p style='text-align: center;'>现在没有注册的计算节点</p>")
+                }
             });
-
         });
     </script>
     <meta charset="utf-8">
@@ -22,10 +27,6 @@
 </head>
 
 <body>
-    <div id="myDiv">
-        <h2>通过 AJAX 改变文本</h2>
-    </div>
-    <button id="b01" type="button">改变内容</button>
     <section id="intro">
         <div class="jumbotron jumbotron-fluid">
             <div class="container">
@@ -40,69 +41,32 @@
     <section id="middle">
         <div id="content" class="container-fluid">
             <div class="row">
-                <div id="nodes-div" class="col-md-4">
-                    <div class="container" style="margin-bottom: 15px;">
+                <div id="nodesDIV" class="col-md-4">
+                    <div id="nodeTemplate" class="container" style="margin-bottom: 15px; visibility: hidden;">
                         <div class="row">
                             <div class="col-md-2">
                                 <img src="img/computer.png" height="30px" width="40px"></img>
                             </div>
                             <div class="col-md-8">
                                 <div class="row">
-                                    <div class="container">
+                                    <div id="nodeNameIP" class="container-fluid">
                                         compute-1 (192.168.1.101)
                                     </div>
                                 </div>
                                 <div class="row ">
-                                    <div class="container ">
-                                        <div class="row ">
-                                            <div class="col-md-6 " style="margin: 0em; ">
+                                    <div class="container-fluid">
+                                        <div class="row">
+                                            <div id="nodeOSName" class="col-md-7" style="margin: 0em; font-size: small;">
                                                 windows 10 pro
                                             </div>
-                                            <div class="col-md-6 " style="text-align: right; ">
-                                                <img src="img/gpu.png " height="22px " width="22px "></img>
-                                                <img src="img/gpu.png " height="22px " width="22px "></img>
-                                                <img src="img/gpu.png " height="22px " width="22px "></img>
-                                                <img src="img/gpu.png " height="22px " width="22px "></img>
+                                            <div id="nodeGPUs" class="col-md-5" style="text-align: right;">
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-2 ">
-                                <img id="online" src="img/online.png " height="25px " width="25px"> </img>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="container ">
-                        <div class="row ">
-                            <div class="col-md-2 ">
-                                <img src="img/computer.png " height="30px " width="40px "></img>
-                            </div>
-                            <div class="col-md-8 ">
-                                <div class="row ">
-                                    <div class="container " style="text-align: left; ">
-                                        compute-2 (192.168.1.102)
-                                    </div>
-                                </div>
-                                <div class="row ">
-                                    <div class="container ">
-                                        <div class="row ">
-                                            <div class="col-md-6 " style="margin: 0em; ">
-                                                windows 10 pro
-                                            </div>
-                                            <div class="col-md-6 " style="text-align: right; ">
-                                                <img src="img/gpu.png " height="22px " width="22px "></img>
-                                                <img src="img/gpu.png " height="22px " width="22px "></img>
-                                                <div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-2 ">
-                                <img src="img/offline.png " height="25px " width="25px "> </img>
+                            <div class="col-md-2">
+                                <img id="nodeStatus" src="img/online.png " height="25px " width="25px"> </img>
                             </div>
                         </div>
                     </div>
