@@ -108,8 +108,8 @@ func (svc *APIServer) requestTerminateJob(id string) error {
 	defer svc.state.Unlock()
 
 	job := svc.state.GetJob(id)
-	if job.State == model.JobTerminated {
-		log.Printf("Job %s is already in TERMINATED state\n", id)
+	if job.State == model.JobTerminated || job.State == model.JobCompleted || job.State == model.JobFailed {
+		log.Printf("Job %s is already in finished state\n", id)
 		return nil
 	}
 	log.Printf("Terminating Job %s...\n", id)

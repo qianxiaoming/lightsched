@@ -88,7 +88,7 @@ func NewJobInfo(job *model.Job) *JobInfo {
 		FinishTime: "",
 		State:      job.State,
 		Progress:   job.Progress,
-		TotalTasks: job.TotalTasks,
+		TotalTasks: job.CountTasks(),
 	}
 	for _, g := range job.Groups {
 		info.Groups = append(info.Groups, g.Name)

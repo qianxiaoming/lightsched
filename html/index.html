@@ -10,13 +10,26 @@
     <script src="js/wit3d.js"></script>
     <script>
         $(document).ready(function () {
+            nodeTemplate = $("#nodeTemplate").detach()
             $.ajax({
                 url : "../nodes",
                 success : function(result) {
-                    initNodeList(result, "#nodesDIV", "#nodeTemplate")
+                    updateNodeList(result, "#nodesDIV")
+                    setNodeTimer()
                 },
                 error : function(e){
                     $("#nodes-div").html("<p style='text-align: center;'>现在没有注册的计算节点</p>")
+                    setNodeTimer()
+                }
+            })
+            $.ajax({
+                url : "../jobs",
+                success : function(result) {
+                    updateJobList(result, "#job-table")
+                    setJobUpdateTimer()
+                },
+                error : function(e){
+                    setJobUpdateTimer()
                 }
             });
         });
@@ -56,8 +69,7 @@
                                 <div class="row ">
                                     <div class="container-fluid">
                                         <div class="row">
-                                            <div id="nodeOSName" class="col-md-7" style="margin: 0em; font-size: small;">
-                                                windows 10 pro
+                                            <div id="nodeResource" class="col-md-7 align-middle" style="margin: 0em; font-size:small;">
                                             </div>
                                             <div id="nodeGPUs" class="col-md-5" style="text-align: right;">
                                             </div>
@@ -66,107 +78,24 @@
                                 </div>
                             </div>
                             <div class="col-md-2">
-                                <img id="nodeStatus" src="img/online.png " height="25px " width="25px"> </img>
+                                <img id="nodeStatus" src="img/online.png" height="25px " width="25px"> </img>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div id="job-div" class="col-md-8">
-                    <table id="job-table" class="table">
+                <div class="col-md-8">
+                    <table class="table">
                         <thead class="thead" style="color: darkslategray;">
                             <th scope="col">名称</th>
                             <th scope="col">状态</th>
                             <th scope="col">任务</th>
-                            <th scope="col">进度</th>
-                            <th scope="col">开始时间</th>
-                            <th scope="col">结束时间</th>
+                            <th scope="col">执行进度</th>
+                            <th scope="col">开始</th>
+                            <th scope="col">结束</th>
                             <th scope="col">操作</th>
                             </tr>
                         </thead>
-                        <tbody id="job-table-body">
-                            <tr>
-                                <th scope="row "> <a href="file:///Users/rachel/Desktop/html/table.html"
-                                        target="_blank">**地区场景建模</a> </th>
-                                <td>完成</td>
-                                <td>205</td>
-                                <td>
-                                    <div class="progress " style="height:5px; ">
-                                        <div class="progress-bar " style="width:100% "></div>
-                                    </div>
-                                </td>
-                                <td> 20-07-10 08:30</td>
-                                <td> 07-10 20:12</td>
-
-                                <td><img src="img/close.png " alt="错误 " height="20px " width="20px ">
-                                    <img src="img/Recycle.png" alt="错误 " height="20px " width="20px ">
-                                </td>
-                            </tr>
-                            <tr>
-                                <th scope="row ">
-                                    <a href="file:///Users/rachel/Desktop/html/table.html" target="_blank">**城市核心区域</a>
-                                </th>
-                                <td>运行</td>
-                                <td>367</td>
-                                <td>
-                                    <div class="progress " style="height:5px; ">
-                                        <div class="progress-bar " style="width:70% "></div>
-                                    </div>
-                                </td>
-                                <td>20-07-01 12:09</td>
-                                <td></td>
-                                <td><img src="img/close.png " alt="错误 " height="20px " width="20px ">
-                                    <img src="img/Recycle.png" alt="错误 " height="20px " width="20px "></td>
-
-                            </tr>
-                            <tr>
-                                <th scope="row ">
-                                    <a href="file:///Users/rachel/Desktop/html/table.html" target="_blank">山东省**县西北</a>
-                                </th>
-                                <td>运行 </td>
-                                <td>93</td>
-                                <td>
-                                    <div class="progress " style="height:5px; ">
-                                        <div class="progress-bar " style="width:30% "></div>
-                                    </div>
-                                </td>
-                                <td>20-07-12 11:37</td>
-                                <td></td>
-                                <td><img src="img/close.png " alt="错误 " height="20px " width="20px ">
-                                    <img src="img/Recycle.png" alt="错误 " height="20px " width="20px "></td>
-                            </tr>
-
-                            <tr>
-                                <th scope="row ">
-                                    <a href="file:///Users/rachel/Desktop/html/table.html" target="_blank">北京雁栖湖</a>
-                                </th>
-                                <td>失败</td>
-                                <td>176</td>
-                                <td>
-                                    <div class="progress " style="height:5px; ">
-                                        <div class="progress-bar bg-danger " style="width:70% "></div>
-                                    </div>
-                                </td>
-                                <td>20-07-13 12:11</td>
-                                <td>07-14 17:12</td>
-                                <td><img src="img/close.png " alt="错误 " height="20px " width="20px ">
-                                    <img src="img/Recycle.png" alt="错误 " height="20px " width="20px "></td>
-                            </tr>
-                            <tr>
-                                <th scope="row ">
-                                    <a href="file:///Users/rachel/Desktop/html/table.html" target="_blank">西安大雁塔</a>
-                                </th>
-                                <td>完成</td>
-                                <td>54</td>
-                                <td>
-                                    <div class="progress " style="height:5px; ">
-                                        <div class="progress-bar " style="width:100% "></div>
-                                    </div>
-                                </td>
-                                <td>20-07-14 19:23</td>
-                                <td>07-15 11:27</td>
-                                <td><img src="img/close.png " alt="错误 " height="20px " width="20px ">
-                                    <img src="img/Recycle.png" alt="错误 " height="20px " width="20px "></td>
-                            </tr>
+                        <tbody id="job-table">
                         </tbody>
                     </table>
                 </div>
