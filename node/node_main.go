@@ -181,8 +181,21 @@ func (node *NodeServer) Run(cpustr string, gpustr string, memorystr string, labe
 			// 更新Task的最新状态。状态信息将在心跳中统一发给服务端。
 			if last, ok := node.heartbeat.payload[update.status.ID]; ok && last.State == update.status.State {
 				last.Progress = update.status.Progress
-				last.Error = update.status.Error
+				if len(update.status.Error) > 0 {
+					if len(last.Error) == 0 {
+						last.Error = update.status.Error
+					} else {
+						last.Error = last.Error + ";" + update.status.Error
+					}
+				}
 			} else {
+				if ok && len(last.Error) != 0 {
+					if len(update.status.Error) == 0 {
+						update.status.Error = last.Error
+					} else {
+						update.status.Error = last.Error + ";" + update.status.Error
+					}
+				}
 				node.heartbeat.payload[update.status.ID] = update.status
 			}
 			// 检查是否在“正在运行任务”列表中

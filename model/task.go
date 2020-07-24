@@ -83,7 +83,7 @@ type Task struct {
 	Resources  *ResourceSet      `json:"resources,omitempty"`
 	State      TaskState         `json:"state"`
 	NodeName   string            `json:"node,omitempty"`
-	Progress   int               `json:"-"`
+	Progress   int               `json:"progress"`
 	ExitCode   int               `json:"exit_code"`
 	Error      string            `json:"error"`
 	StartTime  time.Time         `json:"start_time"`

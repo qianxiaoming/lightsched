@@ -23,7 +23,7 @@ func (node *NodeServer) runExecuteTask(msg *message.JSON) {
 		log.Printf("NOTICE: Unable to unmarshal task json and just ignore it now: %v\n", err)
 	} else {
 		log.Printf("Execute task(%s) program: %s %s\n", task.ID, task.Command, task.Args)
-		cmd := exec.Command(task.Command, task.Args)
+		cmd := exec.Command(task.Command, strings.Split(task.Args, " ")...)
 		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 
 		if len(task.WorkDir) > 0 {
@@ -62,13 +62,14 @@ func (node *NodeServer) runExecuteTask(msg *message.JSON) {
 					node.notifyTaskStatus(task.ID, model.TaskExecuting, cmd.Process, progress, 0, "")
 				}
 				if len(str) > 0 {
-					logs.WriteString(line)
+					logs.WriteString(str)
 				}
 			} else if strings.HasPrefix(line, "[ERROR]") {
 				s := strings.Index(line, "]")
 				if s < len(line)-1 {
 					line = strings.Trim(line[s+1:], " ")
-					line = strings.Trim(line, "\n")
+					logs.WriteString(line)
+					line = strings.Trim(line, "\r\n")
 					node.notifyTaskStatus(task.ID, model.TaskExecuting, cmd.Process, progress, 0, line)
 				}
 			} else {

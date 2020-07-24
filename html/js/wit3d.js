@@ -1,5 +1,6 @@
 var nodeUpdateTimer = undefined
 var jobUpdateTimer = undefined
+var taskUpdateTimer = undefined
 
 function updateNodeList(result, nodesDIV) {
     for(var n in result){
@@ -42,18 +43,18 @@ function setNodeTimer() {
     }
 }
 
-var jobRowString = '<td> <a href="tasks.html?jobid={id}">{name}</a> </td> \
+var jobRowString = '<td> <a href="tasks.html?jobid={id}&jobname={name}&update={update}">{name}</a> </td> \
                     <td>{state}</td> \
                     <td>{tasks}</td> \
                     <td> \
-                        <div class="progress" style="height:5px;"> \
+                        <div class="progress" style="height:9px; width: 100%"> \
                             <div class="progress-bar {progress-status}" style="width:{progress}%"></div> \
                         </div> \
                     </td> \
                     <td>{start}</td> \
                     <td>{finish}</td> \
-                    <td><img id="cancel-{id}" data-toggle="tooltip" data-placement="top" title="取消执行" src="img/cancel.png" alt="取消" height="21px" width="21px"> \
-                        <img id="delete-{id}" data-toggle="tooltip" data-placement="top" title="删除记录" src="img/delete.png" alt="删除" height="21px" width="21px"> \
+                    <td><img id="cancel-{id}" class="operation_img" data-toggle="tooltip" data-placement="top" title="取消执行" src="img/cancel.png" alt="取消" height="21px" width="21px"> \
+                        <img id="delete-{id}" class="operation_img" data-toggle="tooltip" data-placement="top" title="删除记录" src="img/delete.png" alt="删除" height="21px" width="21px"> \
                     </td>'
 
 function getJobState(v) {
@@ -64,6 +65,12 @@ function getJobState(v) {
     if (v == 4) return "失败"
     if (v == 5) return "取消"
 }
+
+function isActiveJobState(v) {
+    if (v >= 3) return "no"
+    return "yes"
+}
+
 function updateJobList(result, jobTable) {
     for(var n in result){
         var tr = $("#job-"+result[n].id)
@@ -76,7 +83,8 @@ function updateJobList(result, jobTable) {
                 continue
         }
         row = jobRowString.replace(/{id}/g, result[n].id)
-        row = row.replace("{name}", result[n].name)
+        row = row.replace(/{name}/g, result[n].name)
+        row = row.replace("{update}", isActiveJobState(result[n].state))
         row = row.replace("{state}", getJobState(result[n].state))
         row = row.replace("{tasks}", result[n].tasks)
         if (result[n].state == 4 || result[n].state == 5)
@@ -124,6 +132,106 @@ function setJobUpdateTimer() {
         jobUpdateTimer = setInterval(function(){
             $.get("../jobs", function(result){
                 updateJobList(result, "#job-table")
+            });
+        }, 2000)
+    }
+}
+
+function getQueryString(name) {
+    var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i");
+    var r = window.location.search.substr(1).match(reg);
+    if(r != null) return decodeURI(r[2]);
+    return null;
+}
+
+var taskRowString ='<td>{number}</td><td>{name}</td> \
+                    <td><img src="img/{state}.png" data-toggle="tooltip" title="{state-tip}" height="24px" width="24px"></td> \
+                    <td>{node}</td> \
+                    <td><div class="progress" style="height:9px; width: 100%"> \
+                            <div class="progress-bar {progress-status}" style="width:{progress}%"></div> \
+                        </div> \
+                    </td> \
+                    <td>{start}</td> \
+                    <td>{finish}</td> \
+                    <td>{error}</td> \
+                    <td><button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#taskLogModal" data-id="{id}">查看日志</button></td>'
+
+function getTaskState(v) {
+    if (v == 0) return "queued"
+    if (v == 1) return "scheduled"
+    if (v == 2) return "dispatching"
+    if (v == 3) return "executing"
+    if (v == 4) return "completed"
+    if (v == 5) return "failed"
+    if (v == 6) return "aborted"
+    if (v == 7) return "terminated"
+}
+
+function getTaskStateTip(v) {
+    if (v == 0) return "等待"
+    if (v == 1) return "已调度"
+    if (v == 2) return "分发中"
+    if (v == 3) return "执行中"
+    if (v == 4) return "已完成"
+    if (v == 5) return "失败"
+    if (v == 6) return "异常中止"
+    if (v == 7) return "已取消"
+}
+
+function updateTaskList(result, taskTable) {
+    for(var n in result){
+        var taskid = result[n].id.replace(".", "-")
+        taskid = taskid.replace(".", "-")
+        var tr = $("#task-"+taskid)
+        if (tr.length == 0) {
+            tr = $("<tr id=\"task-"+taskid+"\" state="+result[n].state+"></tr>")
+            $(taskTable).append(tr)
+        } else {
+            var state = tr.attr("state")
+            if (state=="4" || state=="5" || state == "6" || state == "7")
+                continue
+        }
+        row = taskRowString.replace(/{id}/g, result[n].id)
+        row = row.replace("{name}", result[n].name)
+        row = row.replace("{number}", parseInt(n)+1)
+        row = row.replace("{state}", getTaskState(result[n].state))
+        row = row.replace("{state-tip}", getTaskStateTip(result[n].state))
+        if (result[n].hasOwnProperty("node"))
+            row = row.replace("{node}", result[n].node)
+        else
+            row = row.replace("{node}", "")
+        if (result[n].state == 5 || result[n].state == 6 || result[n].state == 7)
+            row = row.replace("{progress-status}", "bg-danger")
+        else
+            row = row.replace("{progress-status}", "")
+        row = row.replace("{progress}", result[n].progress)
+        if (result[n].hasOwnProperty("start_time"))
+            row = row.replace("{start}", result[n].start_time.substring(5, 19))
+        else
+            row = row.replace("{start}", "")
+        if (result[n].hasOwnProperty("finish_time"))
+            row = row.replace("{finish}", result[n].finish_time.substring(5, 19))
+        else
+            row = row.replace("{finish}", "")
+        if (result[n].hasOwnProperty("error"))
+            row = row.replace("{error}", "<img src=\"img/alert.png\" data-toggle=\"tooltip\" title=\""+result[n].error+"\" height=\"18px\" width=\"18px\">")
+        else
+            row = row.replace("{error}", "")
+        $(tr).html(row)
+
+        $('#taskLogModal').on('show.bs.modal', function (event) {
+            var taskid = $(event.relatedTarget).data('id')
+            var modal = $(this)
+            modal.find('#taskLogViewer').load("../tasks/"+taskid+"/log")
+        })
+    }
+}
+
+function setTaskUpdateTimer(jobid) {
+    if (taskUpdateTimer == undefined) {
+        taskUpdateTimer = setInterval(function(){
+            $.get("../tasks?jobid="+jobid, function(result){
+                updateTaskList(result, "#task-table")
             });
         }, 2000)
     }

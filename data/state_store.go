@@ -328,6 +328,9 @@ func (m *StateStore) UpdateTaskStatus(id string, state model.TaskState, progress
 			task.StartTime = time.Now()
 		} else if model.IsFinishState(state) {
 			task.FinishTime = time.Now()
+			if task.StartTime.IsZero() {
+				task.StartTime = task.FinishTime
+			}
 		}
 		if last != task.State {
 			// 仅在Task的状态发生变化时才保存
