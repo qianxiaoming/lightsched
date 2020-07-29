@@ -18,9 +18,10 @@ const (
 
 // NodePeriodic 是节点周期性更新的数据
 type NodePeriodic struct {
-	timestamp time.Time
-	cpu       float64
-	mem       float64
+	timestamp  time.Time
+	cpu        float64
+	mem        float64
+	executings int
 }
 
 // NodeBucket 保存要发给节点的消息。多个节点可能会共享同一个NodeBucket。
@@ -134,7 +135,7 @@ func (cache *NodeCache) AppendNodeMessage(name string, kind string, object strin
 }
 
 // PeriodicUpdate 获取指定节点的消息，然后清空它的消息列表。返回false表示未发现该节点的注册信息。
-func (cache *NodeCache) PeriodicUpdate(name string, cpu float64, mem float64) ([]*message.JSON, bool) {
+func (cache *NodeCache) PeriodicUpdate(name string, cpu float64, mem float64, execs int) ([]*message.JSON, bool) {
 	index := int(sha1.Sum([]byte(name))[0]) % NodeBucketCount
 	cache.buckets[index].Lock()
 	defer cache.buckets[index].Unlock()
@@ -144,9 +145,10 @@ func (cache *NodeCache) PeriodicUpdate(name string, cpu float64, mem float64) ([
 	}
 	if update, ok := cache.buckets[index].periodics[name]; !ok {
 		update = &NodePeriodic{
-			timestamp: time.Now(),
-			cpu:       cpu,
-			mem:       mem,
+			timestamp:  time.Now(),
+			cpu:        cpu,
+			mem:        mem,
+			executings: execs,
 		}
 		cache.buckets[index].periodics[name] = update
 		log.Printf("Heartbeat for node \"%s\" received for the first time: CPU usage = %.2f, Memory usage = %.2f", name, cpu, mem)
@@ -154,6 +156,7 @@ func (cache *NodeCache) PeriodicUpdate(name string, cpu float64, mem float64) ([
 		update.timestamp = time.Now()
 		update.cpu = cpu
 		update.mem = mem
+		update.executings = execs
 	}
 	// 获取要发送给节点的消息
 	if msgs, ok := cache.buckets[index].messages[name]; ok {

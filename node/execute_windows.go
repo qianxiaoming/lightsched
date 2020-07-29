@@ -9,12 +9,14 @@ import (
 	"log"
 	"net/http"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
 
 	"github.com/qianxiaoming/lightsched/message"
 	"github.com/qianxiaoming/lightsched/model"
+	"github.com/qianxiaoming/lightsched/util"
 )
 
 func (node *NodeServer) runExecuteTask(msg *message.JSON) {
@@ -22,12 +24,23 @@ func (node *NodeServer) runExecuteTask(msg *message.JSON) {
 	if err := json.Unmarshal(msg.Content, task); err != nil {
 		log.Printf("NOTICE: Unable to unmarshal task json and just ignore it now: %v\n", err)
 	} else {
-		log.Printf("Execute task(%s) program: %s %s\n", task.ID, task.Command, task.Args)
-		cmd := exec.Command(task.Command, strings.Split(task.Args, " ")...)
+		command := task.Command
+		workdir := task.WorkDir
+		if !util.PathExists(command) {
+			command = filepath.Join(filepath.Dir(util.GetCurrentPath()), command)
+			if !util.PathExists(command) {
+				log.Printf("Cannot find program for task(%s): %s does not exist\n", task.ID, task.Command)
+				node.notifyTaskStatus(task.ID, model.TaskAborted, nil, 0, 0, "Program does not exist")
+				return
+			}
+			workdir = filepath.Dir(command)
+		}
+		log.Printf("Execute task(%s) program: %s %s\n", task.ID, command, task.Args)
+		cmd := exec.Command(command, strings.Split(task.Args, " ")...)
 		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 
-		if len(task.WorkDir) > 0 {
-			cmd.Dir = task.WorkDir
+		if len(workdir) > 0 {
+			cmd.Dir = workdir
 		}
 		if len(task.Envs) > 0 {
 			cmd.Env = task.Envs

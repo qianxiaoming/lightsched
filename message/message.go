@@ -48,10 +48,11 @@ type TaskReport struct {
 
 // Heartbeat 节点心跳信息
 type Heartbeat struct {
-	Name    string        `json:"name"`
-	CPU     float64       `json:"cpu"`
-	Memory  float64       `json:"memory"`
-	Payload []*TaskReport `json:"payload,omitempty"`
+	Name       string        `json:"name"`
+	CPU        float64       `json:"cpu"`
+	Memory     float64       `json:"memory"`
+	Executings int           `json:"executings"`
+	Payload    []*TaskReport `json:"payload,omitempty"`
 }
 
 // JobInfo 返回给客户端的Job信息

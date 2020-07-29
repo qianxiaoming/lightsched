@@ -28,10 +28,11 @@ func (node *NodeServer) sendHeartbeat() error {
 		node.heartbeat.payload = make(map[string]*message.TaskReport)
 	}
 	hb := &message.Heartbeat{
-		Name:    node.config.Hostname,
-		CPU:     cpu[0],
-		Memory:  mem.UsedPercent,
-		Payload: payload,
+		Name:       node.config.Hostname,
+		CPU:        cpu[0],
+		Memory:     mem.UsedPercent,
+		Executings: len(node.executings),
+		Payload:    payload,
 	}
 	request, _ := json.Marshal(hb)
 	if resp, err := http.Post(node.heartbeat.url, "application/json", bytes.NewReader(request)); err != nil {
