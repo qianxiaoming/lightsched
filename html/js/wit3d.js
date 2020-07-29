@@ -28,22 +28,46 @@ function updateNodeList(result, nodesDIV) {
             $(imgStatus).attr("src", "img/online.png")
             $(imgStatus).attr("title", "节点已上线，点击后可切换为离线状态。")
             $(imgStatus).attr("request", "../nodes/"+result[n].name+"/_offline")
+            $(imgStatus).attr("operation", "offline")
         } else if (result[n].state == 1) {
             $(imgStatus).attr("src", "img/offline.png")
             $(imgStatus).attr("title", "节点已离线，点击后可切换为上线状态。")
             $(imgStatus).attr("request", "../nodes/"+result[n].name+"/_online")
+            $(imgStatus).attr("operation", "online")
         } else {
             $(imgStatus).attr("src", "img/unknown.png")
             $(imgStatus).attr("title", "节点已失去联系，请检查网络连接或者节点本身的运行情况。")
         }
         $(imgStatus).unbind("click").click(function(){
             req = $(this).attr("request")
-            if (req.length > 0) {
-                $.ajax({
-                    url: req,
-                    type: "PUT"
-                });
+            if (req.length == 0) {
+                return
             }
+            operation = $(this).attr("operation")
+            msg = "您确定要将该节点下线吗？下线后的节点不再接收新的计算任务。"
+            if (operation == "online") {
+                msg = "您确定要将该节点上线吗？上线后的节点会接收新的计算任务。"
+            }
+            bootbox.confirm({
+                title: "改变节点状态",
+                message: msg,
+                buttons: {
+                    cancel: {
+                        label: '<i class="fa fa-times"></i> 取消'
+                    },
+                    confirm: {
+                        label: '<i class="fa fa-check"></i> 确认'
+                    }
+                },
+                callback: function (result) {
+                    if (result) {
+                        $.ajax({
+                            url: req,
+                            type: "PUT"
+                        });
+                    };
+                }
+            });
         });
     }
 }
@@ -137,13 +161,29 @@ function updateJobList(result, jobTable) {
         if (isActiveJobState(result[n].state) == "yes") {
             $("#cancel-"+result[n].id).unbind("click").click(function(){
                 var id = $(this).attr("id").substring(7, $(this).attr("id").length)
-                $.ajax({
-                    url: "../jobs/"+id+"/_terminate",
-                    type: "PUT",
-                    success: function(result) {
-                        $.get("../jobs", function(result){
-                            updateJobList(result, "#job-table")
-                        });
+                bootbox.confirm({
+                    title: "取消作业",
+                    message: "该作业尚未完成，确定中止它的执行吗？",
+                    buttons: {
+                        cancel: {
+                            label: '<i class="fa fa-times"></i> 取消'
+                        },
+                        confirm: {
+                            label: '<i class="fa fa-check"></i> 确认'
+                        }
+                    },
+                    callback: function (result) {
+                        if (result) {
+                            $.ajax({
+                                url: "../jobs/"+id+"/_terminate",
+                                type: "PUT",
+                                success: function(result) {
+                                    $.get("../jobs", function(result){
+                                        updateJobList(result, "#job-table")
+                                    });
+                                }
+                            });
+                        };
                     }
                 });
             });
@@ -151,11 +191,27 @@ function updateJobList(result, jobTable) {
             $("#cancel-"+result[n].id).unbind("click")
             $("#delete-"+result[n].id).unbind("click").click(function(){
                 var id = $(this).attr("id").substring(7, $(this).attr("id").length)
-                $.ajax({
-                    url: "../jobs/"+id,
-                    type: "DELETE",
-                    success: function(result) {
-                        $("#job-"+id).remove()
+                bootbox.confirm({
+                    title: "删除作业",
+                    message: "确定删除该作业的运行记录吗？",
+                    buttons: {
+                        cancel: {
+                            label: '<i class="fa fa-times"></i> 取消'
+                        },
+                        confirm: {
+                            label: '<i class="fa fa-check"></i> 确认'
+                        }
+                    },
+                    callback: function (result) {
+                        if (result) {
+                            $.ajax({
+                                url: "../jobs/"+id,
+                                type: "DELETE",
+                                success: function(result) {
+                                    $("#job-"+id).remove()
+                                }
+                            });
+                        };
                     }
                 });
             });
