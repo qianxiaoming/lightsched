@@ -37,37 +37,42 @@ function updateNodeList(result, nodesDIV) {
         } else {
             $(imgStatus).attr("src", "img/unknown.png")
             $(imgStatus).attr("title", "节点已失去联系，请检查网络连接或者节点本身的运行情况。")
+            $(imgStatus).attr("operation", "unknown")
         }
         $(imgStatus).unbind("click").click(function(){
-            req = $(this).attr("request")
-            if (req.length == 0) {
-                return
-            }
             operation = $(this).attr("operation")
-            msg = "您确定要将该节点下线吗？下线后的节点不再接收新的计算任务。"
-            if (operation == "online") {
-                msg = "您确定要将该节点上线吗？上线后的节点会接收新的计算任务。"
-            }
-            bootbox.confirm({
-                title: "改变节点状态",
-                message: msg,
-                buttons: {
-                    cancel: {
-                        label: '<i class="fa fa-times"></i> 取消'
-                    },
-                    confirm: {
-                        label: '<i class="fa fa-check"></i> 确认'
-                    }
-                },
-                callback: function (result) {
-                    if (result) {
-                        $.ajax({
-                            url: req,
-                            type: "PUT"
-                        });
-                    };
+            if (operation == "unknown") {
+                bootbox.alert("无法连接到该节点！请检查网络连接或节点上的服务状态。");
+            } else {
+                req = $(this).attr("request")
+                if (req.length == 0) {
+                    return
                 }
-            });
+                msg = "您确定要将该节点下线吗？下线后的节点不再接收新的计算任务。"
+                if (operation == "online") {
+                    msg = "您确定要将该节点上线吗？上线后的节点会接收新的计算任务。"
+                }
+                bootbox.confirm({
+                    title: "改变节点状态",
+                    message: msg,
+                    buttons: {
+                        cancel: {
+                            label: '<i class="fa fa-times"></i> 取消'
+                        },
+                        confirm: {
+                            label: '<i class="fa fa-check"></i> 确认'
+                        }
+                    },
+                    callback: function (result) {
+                        if (result) {
+                            $.ajax({
+                                url: req,
+                                type: "PUT"
+                            });
+                        };
+                    }
+                });
+            }
         });
     }
 }
