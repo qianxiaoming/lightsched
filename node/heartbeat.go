@@ -34,28 +34,35 @@ func (node *NodeServer) sendHeartbeat() error {
 		Executings: len(node.executings),
 		Payload:    payload,
 	}
-	request, _ := json.Marshal(hb)
-	if resp, err := http.Post(node.heartbeat.url, "application/json", bytes.NewReader(request)); err != nil {
-		log.Printf("Send heartbeat failed: %v\n", err)
-		// 心跳发送失败时需要恢复原来的待发送信息
-		for _, status := range payload {
-			node.heartbeat.payload[status.ID] = status
-		}
+	if request, err := json.Marshal(hb); err != nil {
+		log.Printf("Failed to marshal heartbeat message with %d payload(s): %T %+v\n", len(payload), err, err)
+		log.Printf("%v", hb)
 		return err
 	} else {
-		defer resp.Body.Close()
-		body, _ := ioutil.ReadAll(resp.Body)
-		if len(body) != 0 {
-			msgs := make([]*message.JSON, 0)
-			if err = json.Unmarshal(body, &msgs); err != nil {
-				log.Printf("Unable to unmarshal the response for heartbeat: %v", err)
-			} else {
-				node.runServerMessages(msgs)
+		if resp, err := http.Post(node.heartbeat.url, "application/json", bytes.NewReader(request)); err != nil {
+			resp.Body.Close()
+			log.Printf("Send heartbeat failed with body length %d: %T %+v\n", len(request), err, err)
+			log.Printf("%s", string(request))
+			// 心跳发送失败时需要恢复原来的待发送信息
+			for _, status := range payload {
+				node.heartbeat.payload[status.ID] = status
 			}
-		}
-		if resp.StatusCode == http.StatusNotFound {
-			// 节点需要重新注册自己
-			return errNodeNotRegistered
+			return err
+		} else {
+			body, _ := ioutil.ReadAll(resp.Body)
+			resp.Body.Close()
+			if len(body) != 0 {
+				msgs := make([]*message.JSON, 0)
+				if err = json.Unmarshal(body, &msgs); err != nil {
+					log.Printf("Unable to unmarshal the response for heartbeat: %v", err)
+				} else {
+					node.runServerMessages(msgs)
+				}
+			}
+			if resp.StatusCode == http.StatusNotFound {
+				// 节点需要重新注册自己
+				return errNodeNotRegistered
+			}
 		}
 	}
 	return nil

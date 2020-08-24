@@ -53,14 +53,15 @@ type TaskProcess struct {
 
 // NodeServer 是集群的工作节点服务。每个执行任务的节点上部署1个NodeServer。
 type NodeServer struct {
-	config     Config
-	resources  model.ResourceSet
-	platform   model.PlatformInfo
-	labels     map[string]string
-	state      model.NodeState
-	heartbeat  Heartbeat
-	executings map[string]TaskProcess // 正在运行的Task信息
-	update     chan *TaskUpdate
+	config      Config
+	resources   model.ResourceSet
+	platform    model.PlatformInfo
+	labels      map[string]string
+	state       model.NodeState
+	registering bool
+	heartbeat   Heartbeat
+	executings  map[string]TaskProcess // 正在运行的Task信息
+	update      chan *TaskUpdate
 }
 
 // NewNodeServer 创建一个NodeServer实例
@@ -129,8 +130,9 @@ func NewNodeServer(confPath string, apiserver string, hostname string, heartbeat
 	}
 
 	return &NodeServer{
-		config: *conf,
-		state:  model.NodeUnknown,
+		config:      *conf,
+		state:       model.NodeUnknown,
+		registering: false,
 		heartbeat: Heartbeat{
 			errors:  0,
 			url:     "http://" + conf.Apiserver + "/heartbeat",
@@ -376,7 +378,10 @@ func (node *NodeServer) registerSelf() error {
 	if node.state == model.NodeOffline {
 		return nil
 	}
-	log.Printf("Register node to API Server %s as %s...\n", node.config.Apiserver, node.config.Hostname)
+	if node.registering == false {
+		log.Printf("Register node to API Server %s as %s...\n", node.config.Apiserver, node.config.Hostname)
+		node.registering = true
+	}
 	msg := &message.RegisterNode{
 		Name:      node.config.Hostname,
 		Platform:  node.platform,
@@ -391,12 +396,14 @@ func (node *NodeServer) registerSelf() error {
 			log.Printf("Node registered: %s\n", string(body))
 			node.state = model.NodeOnline
 			node.heartbeat.errors = 0
+			node.registering = false
 		} else {
 			log.Printf("Failed to register node to API Server: %s", string(body))
 		}
 		return nil
 	} else {
-		log.Printf("Failed to register node to API Server: %v", err)
+		resp.Body.Close()
+		//log.Printf("Failed to register node to API Server: %v", err)
 		return err
 	}
 }
