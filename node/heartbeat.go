@@ -40,7 +40,6 @@ func (node *NodeServer) sendHeartbeat() error {
 		return err
 	} else {
 		if resp, err := http.Post(node.heartbeat.url, "application/json", bytes.NewReader(request)); err != nil {
-			resp.Body.Close()
 			log.Printf("Send heartbeat failed with body length %d: %T %+v\n", len(request), err, err)
 			log.Printf("%s", string(request))
 			// 心跳发送失败时需要恢复原来的待发送信息

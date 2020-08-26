@@ -54,7 +54,6 @@ func (e HeartbeatEndpoint) registerRoute() {
 			msgs, found := apiserver.nodes.PeriodicUpdate(hb.Name, hb.CPU, hb.Memory, hb.Executings)
 			status := http.StatusOK
 			if !found {
-				// TODO 通知节点需要重新注册自己
 				status = http.StatusNotFound
 			}
 			if msgs == nil {
@@ -67,6 +66,7 @@ func (e HeartbeatEndpoint) registerRoute() {
 				go apiserver.requestUpdateTasks(hb.Payload)
 			}
 		} else {
+			log.Printf("Invalid heartbeat from %s: %v\n", c.ClientIP(), err)
 			responseError(http.StatusBadRequest, "Parse request failed: %v", err, c)
 		}
 	})

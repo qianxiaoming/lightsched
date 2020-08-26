@@ -402,7 +402,6 @@ func (node *NodeServer) registerSelf() error {
 		}
 		return nil
 	} else {
-		resp.Body.Close()
 		//log.Printf("Failed to register node to API Server: %v", err)
 		return err
 	}
