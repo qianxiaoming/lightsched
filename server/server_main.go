@@ -83,7 +83,7 @@ func NewAPIServer(confPath string) *APIServer {
 			Address:  "",
 			RestPort: constant.DefaultRestPort,
 			NodePort: constant.DefaultNodePort,
-			Offline:  8,
+			Offline:  32,
 			SchedLog: false,
 			DataPath: dataPath,
 			LogPath:  logPath,

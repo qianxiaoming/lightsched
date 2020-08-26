@@ -36,7 +36,7 @@ type WorkNode struct {
 	Available *ResourceSet      `json:"available"` // 在节点刚加入的时候 Available = Resources - Reserved
 }
 
-// NewWorkNode 创建计算节点对象。计算节点默认保留1.5个CPU和2Gi内存。
+// NewWorkNode 创建计算节点对象。计算节点默认保留2个CPU和4Gi内存。
 func NewWorkNode(name string) *WorkNode {
 	return &WorkNode{
 		Name:      name,
@@ -44,9 +44,9 @@ func NewWorkNode(name string) *WorkNode {
 		Resources: &ResourceSet{},
 		Reserved: &ResourceSet{
 			CPU: ResourceCPU{
-				Cores: 1.5,
+				Cores: 2,
 			},
-			Memory: 2000,
+			Memory: 4096,
 		},
 		Available: &ResourceSet{},
 	}

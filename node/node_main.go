@@ -230,11 +230,24 @@ func (node *NodeServer) Run(cpustr string, gpustr string, memorystr string, labe
 					} else {
 						// 心跳发送失败时增加失败计数。当计数累加到5时进入未注册状态。
 						node.heartbeat.errors = node.heartbeat.errors + 1
-						if node.heartbeat.errors > 3 {
+						if node.heartbeat.errors > 8 {
+							log.Println("Failed send heartbeat more than 8 times, kill all tasks and register self now")
 							node.state = model.NodeUnknown
 							node.heartbeat.errors = 0
+							for id, proc := range node.executings {
+								if proc.process != nil {
+									log.Printf("  Killing task(%s) process %d...\n", id, proc.process.Pid)
+									if err := proc.process.Kill(); err != nil {
+										log.Printf("Cannot kill the task process: %v\n", err)
+									} else {
+										log.Printf("  Process %d killed\n", proc.process.Pid)
+									}
+								}
+							}
+							node.executings = make(map[string]TaskProcess)
+							node.heartbeat.payload = make(map[string]*message.TaskReport)
 						} else {
-							timeout = node.config.Heartbeat * 3
+							timeout = node.config.Heartbeat * 2
 						}
 					}
 				}
@@ -247,6 +260,9 @@ func (node *NodeServer) Run(cpustr string, gpustr string, memorystr string, labe
 }
 
 func (node *NodeServer) notifyTaskStatus(id string, state model.TaskState, process *os.Process, progress, exit int, err string) {
+	if node.state == model.NodeUnknown {
+		return
+	}
 	node.update <- &TaskUpdate{
 		status: &message.TaskReport{
 			ID:       id,
@@ -398,7 +414,7 @@ func (node *NodeServer) registerSelf() error {
 			node.heartbeat.errors = 0
 			node.registering = false
 		} else {
-			log.Printf("Failed to register node to API Server: %s", string(body))
+			log.Printf("Failed to register node to API Server: %s\n", string(body))
 		}
 		return nil
 	} else {
